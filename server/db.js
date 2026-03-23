@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { createBlankCv, createSeedCv } from "../src/utils/cvData.js";
 import { createSessionToken, hashPassword, normalizeUsername, verifyPassword } from "./security.js";
+import { normalizeCvDocument } from "./pdfTemplate.js";
 
 const connectionString = process.env.DATABASE_URL
   || "postgresql://cv_user:cv_password@db:5432/cv_builder";
@@ -18,6 +19,56 @@ function mapCvRow(row) {
     createdAt: row.created_at,
     document: row.document,
   };
+}
+
+function buildTemplateSummary(row) {
+  if (!row) return null;
+  const document = normalizeCvDocument(row.document || {});
+  const visibleSections = Array.isArray(document.sections)
+    ? document.sections.filter((section) => section?.visible !== false)
+    : [];
+
+  return {
+    id: row.id,
+    name: row.name,
+    updatedAt: row.updated_at,
+    createdAt: row.created_at,
+    theme: document.theme,
+    previewName: document.basics?.fullName || "",
+    previewHeadline: document.basics?.headline || "",
+    sectionCount: visibleSections.length,
+    isPublic: Boolean(row.is_public),
+    ownerUsername: row.owner_username || "",
+  };
+}
+
+function mapTemplateRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    updatedAt: row.updated_at,
+    createdAt: row.created_at,
+    isPublic: Boolean(row.is_public),
+    ownerUsername: row.owner_username || "",
+    document: normalizeCvDocument(row.document),
+  };
+}
+
+function createCvFromTemplateDocument(templateRow) {
+  const baseDocument = normalizeCvDocument(templateRow?.document || createBlankCv());
+  const strippedTemplateName = String(templateRow?.name || "")
+    .replace(/\s+template$/i, "")
+    .trim();
+  const nextName = String(baseDocument.name || "").trim()
+    || strippedTemplateName
+    || "Untitled CV";
+
+  return normalizeCvDocument({
+    ...baseDocument,
+    id: crypto.randomUUID(),
+    name: nextName,
+  });
 }
 
 function assertPassword(password = "") {
@@ -92,8 +143,27 @@ export async function ensureSchema() {
     ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id) ON DELETE CASCADE
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS cv_templates (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      document JSONB NOT NULL,
+      is_public BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    ALTER TABLE cv_templates
+    ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT FALSE
+  `);
+
   await pool.query("CREATE INDEX IF NOT EXISTS cvs_updated_at_idx ON cvs (updated_at DESC)");
   await pool.query("CREATE INDEX IF NOT EXISTS cvs_user_updated_at_idx ON cvs (user_id, updated_at DESC)");
+  await pool.query("CREATE INDEX IF NOT EXISTS cv_templates_user_updated_at_idx ON cv_templates (user_id, updated_at DESC)");
+  await pool.query("CREATE INDEX IF NOT EXISTS cv_templates_public_updated_at_idx ON cv_templates (is_public, updated_at DESC)");
   await pool.query("CREATE INDEX IF NOT EXISTS user_sessions_user_id_idx ON user_sessions (user_id)");
 
   await ensureDefaultAccount();
@@ -295,6 +365,49 @@ export async function listUserCvs(userId) {
   }));
 }
 
+export async function listUserTemplates(userId) {
+  const result = await pool.query(
+    `
+      SELECT
+        cv_templates.id,
+        cv_templates.name,
+        cv_templates.document,
+        cv_templates.created_at,
+        cv_templates.updated_at,
+        cv_templates.is_public,
+        users.username AS owner_username
+      FROM cv_templates
+      INNER JOIN users ON users.id = cv_templates.user_id
+      WHERE cv_templates.user_id = $1::uuid
+      ORDER BY updated_at DESC, created_at DESC
+    `,
+    [userId]
+  );
+
+  return result.rows.map(buildTemplateSummary);
+}
+
+export async function listPublicTemplates() {
+  const result = await pool.query(
+    `
+      SELECT
+        cv_templates.id,
+        cv_templates.name,
+        cv_templates.document,
+        cv_templates.created_at,
+        cv_templates.updated_at,
+        cv_templates.is_public,
+        users.username AS owner_username
+      FROM cv_templates
+      INNER JOIN users ON users.id = cv_templates.user_id
+      WHERE cv_templates.is_public = TRUE
+      ORDER BY cv_templates.updated_at DESC, cv_templates.created_at DESC
+    `
+  );
+
+  return result.rows.map(buildTemplateSummary);
+}
+
 export async function deleteUserCvs(userId, cvIds = []) {
   const ids = Array.isArray(cvIds)
     ? [...new Set(cvIds.map((value) => String(value || "").trim()).filter(Boolean))]
@@ -307,6 +420,28 @@ export async function deleteUserCvs(userId, cvIds = []) {
   const result = await pool.query(
     `
       DELETE FROM cvs
+      WHERE user_id = $1::uuid
+        AND id = ANY($2::uuid[])
+      RETURNING id
+    `,
+    [userId, ids]
+  );
+
+  return result.rows.map((row) => row.id);
+}
+
+export async function deleteUserTemplates(userId, templateIds = []) {
+  const ids = Array.isArray(templateIds)
+    ? [...new Set(templateIds.map((value) => String(value || "").trim()).filter(Boolean))]
+    : [];
+
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const result = await pool.query(
+    `
+      DELETE FROM cv_templates
       WHERE user_id = $1::uuid
         AND id = ANY($2::uuid[])
       RETURNING id
@@ -337,6 +472,25 @@ export async function renameUserCv(userId, cvId, nextName = "") {
   return mapCvRow(result.rows[0]);
 }
 
+export async function renameUserTemplate(userId, templateId, nextName = "") {
+  const safeName = String(nextName || "").trim() || "Untitled Template";
+
+  const result = await pool.query(
+    `
+      UPDATE cv_templates
+      SET
+        name = $3,
+        updated_at = NOW()
+      WHERE user_id = $1::uuid
+        AND id = $2::uuid
+      RETURNING id, name, document, created_at, updated_at, is_public
+    `,
+    [userId, templateId, safeName]
+  );
+
+  return buildTemplateSummary(result.rows[0]);
+}
+
 export async function getUserCvById(userId, cvId) {
   const result = await pool.query(
     `
@@ -349,6 +503,46 @@ export async function getUserCvById(userId, cvId) {
   );
 
   return mapCvRow(result.rows[0]);
+}
+
+export async function getAccessibleTemplateById(userId, templateId) {
+  const result = await pool.query(
+    `
+      SELECT
+        cv_templates.id,
+        cv_templates.name,
+        cv_templates.document,
+        cv_templates.created_at,
+        cv_templates.updated_at,
+        cv_templates.is_public,
+        users.username AS owner_username
+      FROM cv_templates
+      INNER JOIN users ON users.id = cv_templates.user_id
+      WHERE cv_templates.id = $2::uuid
+        AND (cv_templates.user_id = $1::uuid OR cv_templates.is_public = TRUE)
+      LIMIT 1
+    `,
+    [userId, templateId]
+  );
+
+  return mapTemplateRow(result.rows[0]);
+}
+
+export async function setUserTemplateVisibility(userId, templateId, isPublic) {
+  const result = await pool.query(
+    `
+      UPDATE cv_templates
+      SET
+        is_public = $3,
+        updated_at = NOW()
+      WHERE user_id = $1::uuid
+        AND id = $2::uuid
+      RETURNING id, name, document, created_at, updated_at, is_public
+    `,
+    [userId, templateId, Boolean(isPublic)]
+  );
+
+  return buildTemplateSummary(result.rows[0]);
 }
 
 export async function getLatestUserCv(userId) {
@@ -391,6 +585,49 @@ export async function saveUserCvDocument(userId, cv) {
   );
 
   return mapCvRow(result.rows[0]);
+}
+
+export async function saveUserTemplate(userId, templateId, name, document) {
+  const safeName = String(name || "").trim() || "Untitled Template";
+  const normalizedDocument = normalizeCvDocument(document);
+
+  if (templateId) {
+    const existing = await pool.query(
+      "SELECT user_id FROM cv_templates WHERE id = $1::uuid",
+      [templateId]
+    );
+
+    if (existing.rows[0] && existing.rows[0].user_id !== userId) {
+      throw new Error("You are not allowed to modify this template.");
+    }
+  }
+
+  const result = await pool.query(
+    `
+      INSERT INTO cv_templates (id, user_id, name, document)
+      VALUES (COALESCE($1::uuid, gen_random_uuid()), $2::uuid, $3, $4::jsonb)
+      ON CONFLICT (id)
+      DO UPDATE SET
+        name = EXCLUDED.name,
+        document = EXCLUDED.document,
+        updated_at = NOW()
+      RETURNING id, name, document, created_at, updated_at, is_public
+    `,
+    [templateId || null, userId, safeName, JSON.stringify(normalizedDocument)]
+  );
+
+  return buildTemplateSummary(result.rows[0]);
+}
+
+export async function createUserCvFromTemplate(userId, templateId) {
+  const template = await getAccessibleTemplateById(userId, templateId);
+
+  if (!template) {
+    return null;
+  }
+
+  const cv = createCvFromTemplateDocument(template);
+  return saveUserCvDocument(userId, cv);
 }
 
 export async function createUserCvDocument(userId, template = "blank") {

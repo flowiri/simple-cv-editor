@@ -6,17 +6,25 @@ import puppeteer from "puppeteer-core";
 import {
   changeUserPassword,
   createUserCvDocument,
+  createUserCvFromTemplate,
   deleteUserCvs,
+  deleteUserTemplates,
   deleteSession,
   ensureSchema,
+  getAccessibleTemplateById,
   getLatestUserCv,
   getUserCvById,
   getUserFromToken,
   listUserCvs,
+  listPublicTemplates,
+  listUserTemplates,
   loginUser,
   renameUserCv,
+  renameUserTemplate,
   registerUser,
   saveUserCvDocument,
+  saveUserTemplate,
+  setUserTemplateVisibility,
 } from "./db.js";
 import { normalizeCvDocument, renderCvHtml } from "./pdfTemplate.js";
 
@@ -189,6 +197,121 @@ app.post("/api/cvs/delete", requireAuth, async (request, response) => {
   try {
     const deletedIds = await deleteUserCvs(request.authUser.id, request.body?.ids);
     response.json({ deletedIds });
+  } catch (error) {
+    sendError(response, error, 500);
+  }
+});
+
+app.get("/api/templates", requireAuth, async (request, response) => {
+  try {
+    const templates = await listUserTemplates(request.authUser.id);
+    response.json(templates);
+  } catch (error) {
+    sendError(response, error, 500);
+  }
+});
+
+app.get("/api/templates/public", requireAuth, async (_request, response) => {
+  try {
+    const templates = await listPublicTemplates();
+    response.json(templates);
+  } catch (error) {
+    sendError(response, error, 500);
+  }
+});
+
+app.get("/api/templates/:id", requireAuth, async (request, response) => {
+  try {
+    const template = await getAccessibleTemplateById(request.authUser.id, request.params.id);
+
+    if (!template?.document) {
+      response.status(404).json({ error: "Template not found." });
+      return;
+    }
+
+    response.json({
+      id: template.id,
+      name: template.name,
+      createdAt: template.createdAt,
+      updatedAt: template.updatedAt,
+      document: normalizeCvDocument(template.document),
+    });
+  } catch (error) {
+    sendError(response, error, 500);
+  }
+});
+
+app.post("/api/templates", requireAuth, async (request, response) => {
+  try {
+    const savedTemplate = await saveUserTemplate(
+      request.authUser.id,
+      request.body?.templateId,
+      request.body?.name,
+      request.body?.document
+    );
+    response.status(request.body?.templateId ? 200 : 201).json(savedTemplate);
+  } catch (error) {
+    sendError(response, error, 403);
+  }
+});
+
+app.post("/api/templates/:id/rename", requireAuth, async (request, response) => {
+  try {
+    const renamed = await renameUserTemplate(
+      request.authUser.id,
+      request.params.id,
+      request.body?.name
+    );
+
+    if (!renamed) {
+      response.status(404).json({ error: "Template not found." });
+      return;
+    }
+
+    response.json(renamed);
+  } catch (error) {
+    sendError(response, error, 500);
+  }
+});
+
+app.post("/api/templates/:id/visibility", requireAuth, async (request, response) => {
+  try {
+    const updated = await setUserTemplateVisibility(
+      request.authUser.id,
+      request.params.id,
+      request.body?.isPublic
+    );
+
+    if (!updated) {
+      response.status(404).json({ error: "Template not found." });
+      return;
+    }
+
+    response.json(updated);
+  } catch (error) {
+    sendError(response, error, 500);
+  }
+});
+
+app.post("/api/templates/delete", requireAuth, async (request, response) => {
+  try {
+    const deletedIds = await deleteUserTemplates(request.authUser.id, request.body?.ids);
+    response.json({ deletedIds });
+  } catch (error) {
+    sendError(response, error, 500);
+  }
+});
+
+app.post("/api/templates/:id/create-cv", requireAuth, async (request, response) => {
+  try {
+    const created = await createUserCvFromTemplate(request.authUser.id, request.params.id);
+
+    if (!created?.document) {
+      response.status(404).json({ error: "Template not found." });
+      return;
+    }
+
+    response.status(201).json(normalizeCvDocument(created.document));
   } catch (error) {
     sendError(response, error, 500);
   }

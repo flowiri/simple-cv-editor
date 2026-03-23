@@ -4,12 +4,24 @@ import { AuthScreen } from "./components/auth/AuthScreen.jsx";
 import { AccountPanel } from "./components/account/AccountPanel.jsx";
 import { BasicsPanel } from "./components/editor/BasicsPanel.jsx";
 import { SectionsPanel } from "./components/editor/SectionsPanel.jsx";
+import { ThemePanel } from "./components/editor/ThemePanel.jsx";
 import { CvLibraryPanel } from "./components/library/CvLibraryPanel.jsx";
+import { PublicTemplatePanel } from "./components/library/PublicTemplatePanel.jsx";
 import { ContactRow } from "./components/preview/ContactRow.jsx";
 import { PreviewSection } from "./components/preview/PreviewSection.jsx";
+import { createBlankCv } from "./utils/cvData.js";
+import { getCvThemeStyle } from "./utils/cvThemes.js";
 import { renderFormattedParagraph } from "./utils/formatting.jsx";
 import { getSectionKind } from "./utils/sections.js";
-import { loadSession, loadWorkspaceScreen, saveWorkspaceScreen } from "./utils/storage.js";
+import {
+  loadSession,
+  loadTemplatePreviewId,
+  loadTemplatePreviewSource,
+  loadWorkspaceScreen,
+  saveTemplatePreviewId,
+  saveTemplatePreviewSource,
+  saveWorkspaceScreen,
+} from "./utils/storage.js";
 
 const A4_PAGE_HEIGHT_MM = 297;
 const A4_PAGE_PADDING_TOP_MM = 15;
@@ -40,6 +52,14 @@ function EditIcon() {
   );
 }
 
+function TemplateIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 3h8l5 5v13H6zm7 1.5V9h4.5zM9 13h6v2H9zm0 4h6v2H9z" fill="currentColor" />
+    </svg>
+  );
+}
+
 function BackIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -61,6 +81,9 @@ export default function App() {
   const [isEditorTopbarVisible, setIsEditorTopbarVisible] = useState(true);
   const [isEditingCvName, setIsEditingCvName] = useState(false);
   const [draftCvName, setDraftCvName] = useState("");
+  const [templatePreviewId, setTemplatePreviewId] = useState("");
+  const [templatePreview, setTemplatePreview] = useState(null);
+  const [templatePreviewSource, setTemplatePreviewSource] = useState("library");
   const [editorTopbarHeight, setEditorTopbarHeight] = useState(92);
   const [pages, setPages] = useState([]);
   const measureRefs = useRef([]);
@@ -101,20 +124,36 @@ export default function App() {
     authStatus,
     authError,
     cvList,
+    templateList,
+    publicTemplateList,
     selectedCvId,
     login,
     register,
     logout,
     createNewCv,
+    createNewCvFromTemplate,
+    previewTemplate,
     selectCv,
     deleteManyCvs,
+    deleteManyTemplates,
     renameCvName,
+    renameTemplateName,
+    setTemplateVisibility,
+    saveCurrentCvAsTemplate,
     changePassword,
     loadSampleData,
     autoSaveLabel,
+    templateSaveLabel,
     passwordLabel,
     passwordError,
+    setThemePreset,
+    updateThemeColor,
   } = useCvBuilderViewModel();
+  const blankPreviewCv = useMemo(() => createBlankCv(), []);
+  const isTemplateViewerScreen = workspaceScreen === "template-viewer";
+  const activeDocument = isTemplateViewerScreen
+    ? (templatePreview?.document || blankPreviewCv)
+    : cv;
 
   const previewBlocks = useMemo(() => {
     const isEditorWorkspace = workspaceScreen === "editor";
@@ -125,23 +164,23 @@ export default function App() {
         render: () => (
           <header className="cv-header">
             <div>
-              <h1>{cv.basics.fullName}</h1>
-              <p className="cv-headline">{cv.basics.headline}</p>
+              <h1>{activeDocument.basics.fullName}</h1>
+              <p className="cv-headline">{activeDocument.basics.headline}</p>
             </div>
             <ul className="contact-list">
-              <ContactRow label="Email" value={cv.basics.email} />
-              <ContactRow label="Phone" value={cv.basics.phone} />
-              <ContactRow label="Website" value={cv.basics.website} link />
-              <ContactRow label="LinkedIn" value={cv.basics.linkedin} link />
-              <ContactRow label="Nationality" value={cv.basics.nationality} />
-              <ContactRow label="Date of Birth" value={cv.basics.dateOfBirth} />
+              <ContactRow label="Email" value={activeDocument.basics.email} />
+              <ContactRow label="Phone" value={activeDocument.basics.phone} />
+              <ContactRow label="Website" value={activeDocument.basics.website} link />
+              <ContactRow label="LinkedIn" value={activeDocument.basics.linkedin} link />
+              <ContactRow label="Nationality" value={activeDocument.basics.nationality} />
+              <ContactRow label="Date of Birth" value={activeDocument.basics.dateOfBirth} />
             </ul>
           </header>
         ),
       },
     ];
 
-    if (cv.basics.summary) {
+    if (activeDocument.basics.summary) {
       blocks.push({
         id: "summary",
         spacingBefore: 0,
@@ -151,13 +190,13 @@ export default function App() {
             onClick={isEditorWorkspace ? () => focusEditorTarget("basics-summary") : undefined}
           >
             <h2>Objective</h2>
-            <p>{renderFormattedParagraph(cv.basics.summary, "basics-summary-para")}</p>
+            <p>{renderFormattedParagraph(activeDocument.basics.summary, "basics-summary-para")}</p>
           </section>
         ),
       });
     }
 
-    (cv.sections || [])
+    (activeDocument.sections || [])
       .filter((section) => section.visible !== false)
       .forEach((section) => {
         const sectionKind = getSectionKind(section.title, section.type, section.sectionTemplate);
@@ -209,7 +248,7 @@ export default function App() {
       });
 
     return blocks;
-  }, [cv, focusEditorTarget, workspaceScreen]);
+  }, [activeDocument, focusEditorTarget, workspaceScreen]);
 
   useEffect(() => {
     measureRefs.current = measureRefs.current.slice(0, previewBlocks.length);
@@ -286,9 +325,12 @@ export default function App() {
     () => cvList.find((item) => item.id === selectedCvId) || null,
     [cvList, selectedCvId]
   );
+  const previewThemeStyle = useMemo(() => getCvThemeStyle(activeDocument.theme), [activeDocument.theme]);
   const isViewerScreen = workspaceScreen === "viewer";
   const isEditorScreen = workspaceScreen === "editor";
-  const displayCvName = cv.name || selectedCvMeta?.name || "Untitled CV";
+  const displayCvName = isTemplateViewerScreen
+    ? (templatePreview?.name || activeDocument.name || "Untitled Template")
+    : (cv.name || selectedCvMeta?.name || "Untitled CV");
 
   useEffect(() => {
     const userId = session?.user?.id || "";
@@ -296,12 +338,16 @@ export default function App() {
     if (!userId) {
       lastWorkspaceUserRef.current = "";
       setWorkspaceScreen("library");
+      setTemplatePreviewSource("library");
       return;
     }
 
     if (lastWorkspaceUserRef.current !== userId) {
       lastWorkspaceUserRef.current = userId;
       setWorkspaceScreen(loadWorkspaceScreen(userId));
+      setTemplatePreviewId(loadTemplatePreviewId(userId));
+      setTemplatePreviewSource(loadTemplatePreviewSource(userId));
+      setTemplatePreview(null);
       setWorkspaceMenuOpen(false);
     }
   }, [session?.user?.id]);
@@ -310,6 +356,16 @@ export default function App() {
     if (!session?.user?.id) return;
     saveWorkspaceScreen(session.user.id, workspaceScreen);
   }, [session?.user?.id, workspaceScreen]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    saveTemplatePreviewId(session.user.id, templatePreviewId);
+  }, [session?.user?.id, templatePreviewId]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    saveTemplatePreviewSource(session.user.id, templatePreviewSource);
+  }, [session?.user?.id, templatePreviewSource]);
 
   useEffect(() => {
     if (!workspaceMenuOpen) return undefined;
@@ -344,7 +400,7 @@ export default function App() {
   }, [isEditingCvName]);
 
   useEffect(() => {
-    if (workspaceScreen !== "editor" && workspaceScreen !== "viewer") return undefined;
+    if (workspaceScreen !== "editor" && workspaceScreen !== "viewer" && workspaceScreen !== "template-viewer") return undefined;
 
     const updateTopbarHeight = () => {
       setEditorTopbarHeight(editorTopbarRef.current?.offsetHeight || 92);
@@ -365,12 +421,12 @@ export default function App() {
   }, [workspaceMenuOpen, isEditingCvName]);
 
   useEffect(() => {
-    if (workspaceScreen === "editor" || workspaceScreen === "viewer") {
+    if (workspaceScreen === "editor" || workspaceScreen === "viewer" || workspaceScreen === "template-viewer") {
       setIsEditorTopbarVisible(true);
       lastEditorScrollTopRef.current = 0;
       lastPreviewScrollTopRef.current = 0;
     }
-  }, [workspaceScreen, selectedCvId]);
+  }, [workspaceScreen, selectedCvId, templatePreviewId]);
 
   useEffect(() => {
     if (
@@ -381,6 +437,37 @@ export default function App() {
       setWorkspaceScreen("library");
     }
   }, [workspaceScreen, selectedCvId, workspaceStatus]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (workspaceScreen !== "template-viewer") {
+      return undefined;
+    }
+
+    if (!templatePreviewId) {
+      setTemplatePreview(null);
+      setWorkspaceScreen(templatePreviewSource === "public-templates" ? "public-templates" : "library");
+      return undefined;
+    }
+
+    previewTemplate(templatePreviewId)
+      .then((template) => {
+        if (cancelled) return;
+
+        if (!template) {
+          setTemplatePreview(null);
+          setWorkspaceScreen(templatePreviewSource === "public-templates" ? "public-templates" : "library");
+          return;
+        }
+
+        setTemplatePreview(template);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [templatePreviewId, templatePreviewSource, workspaceScreen]);
 
   if (!isAuthenticated) {
     return (
@@ -397,6 +484,8 @@ export default function App() {
     const didOpen = await selectCv(cvId);
     if (didOpen) {
       setWorkspaceScreen("editor");
+      setTemplatePreview(null);
+      setTemplatePreviewId("");
       setWorkspaceMenuOpen(false);
     }
   };
@@ -405,20 +494,40 @@ export default function App() {
     const didOpen = await selectCv(cvId);
     if (didOpen) {
       setWorkspaceScreen("viewer");
+      setTemplatePreview(null);
+      setTemplatePreviewId("");
+      setTemplatePreviewSource("library");
       setWorkspaceMenuOpen(false);
     }
+  };
+
+  const handlePreviewTemplate = async (nextTemplateId, sourceScreen = "library") => {
+    if (!nextTemplateId) return;
+    setTemplatePreview(null);
+    setTemplatePreviewId(nextTemplateId);
+    setTemplatePreviewSource(sourceScreen);
+    setWorkspaceScreen("template-viewer");
+    setWorkspaceMenuOpen(false);
   };
 
   const handleCreateCvAndOpen = async (template) => {
     const didCreate = await createNewCv(template);
     if (didCreate) {
       setWorkspaceScreen("editor");
+      setTemplatePreview(null);
+      setTemplatePreviewId("");
+      setTemplatePreviewSource("library");
       setWorkspaceMenuOpen(false);
     }
   };
 
   const goToScreen = (nextScreen) => {
     setWorkspaceScreen(nextScreen);
+    if (nextScreen !== "template-viewer") {
+      setTemplatePreview(null);
+      setTemplatePreviewId("");
+      setTemplatePreviewSource(nextScreen === "public-templates" ? "public-templates" : "library");
+    }
     setWorkspaceMenuOpen(false);
   };
 
@@ -475,6 +584,13 @@ export default function App() {
       </button>
       <button
         type="button"
+        className={`workspace-nav-button ${workspaceScreen === "public-templates" ? "is-active" : "secondary"}`}
+        onClick={() => goToScreen("public-templates")}
+      >
+        Public Templates
+      </button>
+      <button
+        type="button"
         className={`workspace-nav-button ${workspaceScreen === "profile" ? "is-active" : "secondary"}`}
         onClick={() => goToScreen("profile")}
       >
@@ -511,6 +627,9 @@ export default function App() {
           <button type="button" className="workspace-menu-item" onClick={() => goToScreen("library")}>
             My CVs
           </button>
+          <button type="button" className="workspace-menu-item" onClick={() => goToScreen("public-templates")}>
+            Public Templates
+          </button>
           <button type="button" className="workspace-menu-item" onClick={() => goToScreen("profile")}>
             Profile
           </button>
@@ -529,7 +648,7 @@ export default function App() {
     </div>
   );
 
-  if (workspaceScreen === "library" || workspaceScreen === "profile") {
+  if (workspaceScreen === "library" || workspaceScreen === "public-templates" || workspaceScreen === "profile") {
     return (
       <div className="workspace-shell">
         <div className="app-backdrop" aria-hidden="true">
@@ -553,13 +672,44 @@ export default function App() {
           {workspaceScreen === "library" ? (
             <CvLibraryPanel
               cvs={cvList}
+              templates={templateList}
               selectedCvId={selectedCvId}
               workspaceStatus={workspaceStatus}
               onSelectCv={handleOpenCv}
               onPreviewCv={handlePreviewCv}
               onRenameCv={renameCvName}
+              onRenameTemplate={renameTemplateName}
+              onSetTemplateVisibility={setTemplateVisibility}
               onCreateCv={handleCreateCvAndOpen}
+              onPreviewTemplate={(nextTemplateId) => handlePreviewTemplate(nextTemplateId, "library")}
+              onCreateCvFromTemplate={async (nextTemplateId) => {
+                const didCreate = await createNewCvFromTemplate(nextTemplateId);
+                if (didCreate) {
+                  setWorkspaceScreen("editor");
+                  setTemplatePreview(null);
+                  setTemplatePreviewId("");
+                  setTemplatePreviewSource("library");
+                  setWorkspaceMenuOpen(false);
+                }
+              }}
               onDeleteCvs={deleteManyCvs}
+              onDeleteTemplates={deleteManyTemplates}
+            />
+          ) : workspaceScreen === "public-templates" ? (
+            <PublicTemplatePanel
+              templates={publicTemplateList}
+              workspaceStatus={workspaceStatus}
+              onPreviewTemplate={(nextTemplateId) => handlePreviewTemplate(nextTemplateId, "public-templates")}
+              onCreateCvFromTemplate={async (nextTemplateId) => {
+                const didCreate = await createNewCvFromTemplate(nextTemplateId);
+                if (didCreate) {
+                  setWorkspaceScreen("editor");
+                  setTemplatePreview(null);
+                  setTemplatePreviewId("");
+                  setTemplatePreviewSource("public-templates");
+                  setWorkspaceMenuOpen(false);
+                }
+              }}
             />
           ) : (
             <AccountPanel
@@ -598,13 +748,13 @@ export default function App() {
           <div className="topbar-copy">
             <p className="eyebrow">CV Builder</p>
             <div className="editor-title-row">
-              {(isViewerScreen || isEditorScreen) ? (
+              {(isViewerScreen || isEditorScreen || isTemplateViewerScreen) ? (
                 <button
                   type="button"
                   className="icon-btn secondary toolbar-icon-button editor-back-button"
                   title="Back to My CVs"
                   aria-label="Back to My CVs"
-                  onClick={() => goToScreen("library")}
+                  onClick={() => goToScreen(isTemplateViewerScreen ? templatePreviewSource : "library")}
                 >
                   <BackIcon />
                 </button>
@@ -682,6 +832,25 @@ export default function App() {
                 >
                   <EditIcon />
                 </button>
+              ) : isTemplateViewerScreen ? (
+                <button
+                  type="button"
+                  className="icon-btn secondary toolbar-icon-button"
+                  title="Create CV from this template"
+                  aria-label="Create CV from this template"
+                  onClick={async () => {
+                    if (!templatePreviewId) return;
+                    const didCreate = await createNewCvFromTemplate(templatePreviewId);
+                    if (didCreate) {
+                      setWorkspaceScreen("editor");
+                      setTemplatePreview(null);
+                      setTemplatePreviewId("");
+                      setTemplatePreviewSource("library");
+                    }
+                  }}
+                >
+                  <TemplateIcon />
+                </button>
               ) : isEditorScreen ? (
                 <button className="secondary small" onClick={loadSampleData}>Feed Sample</button>
               ) : null}
@@ -703,7 +872,7 @@ export default function App() {
                 className="icon-btn toolbar-icon-button"
                 title={exportLabel}
                 aria-label={exportLabel}
-                onClick={handleExportPdf}
+                onClick={() => handleExportPdf(activeDocument)}
               >
                 <ExportIcon />
               </button>
@@ -714,7 +883,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className={`app-shell editor-app-shell ${isViewerScreen ? "viewer-app-shell" : ""}`}>
+      <div className={`app-shell editor-app-shell ${(isViewerScreen || isTemplateViewerScreen) ? "viewer-app-shell" : ""}`}>
         {isEditorScreen ? (
           <aside className="editor-pane">
             <main
@@ -724,6 +893,16 @@ export default function App() {
               onFocusCapture={() => setIsEditorTopbarVisible(true)}
             >
               <div className="editor-content">
+                <ThemePanel
+                  cvName={displayCvName}
+                  theme={cv.theme}
+                  templateCount={templateList.length}
+                  templateSaveLabel={templateSaveLabel}
+                  onSelectPreset={setThemePreset}
+                  onUpdateThemeColor={updateThemeColor}
+                  onSaveTemplate={saveCurrentCvAsTemplate}
+                />
+
                 <BasicsPanel
                   basics={cv.basics}
                   activeInspectorTarget={activeInspectorTarget}
@@ -754,14 +933,14 @@ export default function App() {
           </aside>
         ) : null}
 
-        <section className={`preview-pane ${isViewerScreen ? "preview-pane-full" : ""}`}>
+        <section className={`preview-pane ${(isViewerScreen || isTemplateViewerScreen) ? "preview-pane-full" : ""}`}>
           <div
-            className={`preview-scroll preview-mode-${previewMode} ${isViewerScreen ? "viewer-preview-scroll" : ""}`}
+            className={`preview-scroll preview-mode-${previewMode} ${(isViewerScreen || isTemplateViewerScreen) ? "viewer-preview-scroll" : ""}`}
             onScroll={handlePreviewScroll}
             onFocusCapture={() => setIsEditorTopbarVisible(true)}
           >
             {renderedPages.map((pageBlocks, pageIndex) => (
-              <article className="cv-page" key={`page-${pageIndex}`}>
+              <article className="cv-page" key={`page-${pageIndex}`} style={previewThemeStyle}>
                 {pageBlocks.map((block) => (
                   <div
                     key={block.id}
@@ -774,7 +953,7 @@ export default function App() {
               </article>
             ))}
             <div className="cv-measure-layer" aria-hidden="true">
-              <article className="cv-page cv-page-measure">
+              <article className="cv-page cv-page-measure" style={previewThemeStyle}>
                 {previewBlocks.map((block, index) => (
                   <div
                     key={`measure-${block.id}`}

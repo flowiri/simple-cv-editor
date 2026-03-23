@@ -1,3 +1,5 @@
+import { createDefaultCvTheme, normalizeStoredCvTheme } from "./cvThemes.js";
+
 export const createId = () => crypto.randomUUID();
 
 export const createEntryItem = (overrides = {}) => ({
@@ -255,6 +257,7 @@ export const mergeWithDefaultSections = (sections = []) => {
 export const createSeedCv = () => ({
   id: createId(),
   name: "Alex Carter CV",
+  theme: createDefaultCvTheme(),
   basics: {
     fullName: "Alex Carter",
     headline: "Security Engineer",
@@ -273,6 +276,7 @@ export const createSeedCv = () => ({
 export const createBlankCv = () => ({
   id: createId(),
   name: "Untitled CV",
+  theme: createDefaultCvTheme(),
   basics: {
     fullName: "",
     headline: "",
@@ -298,5 +302,6 @@ export const applySeedDataToCv = (currentCv) => {
       base.name && String(base.name).trim() && base.name !== "Untitled CV"
         ? base.name
         : sample.name,
+    theme: normalizeStoredCvTheme(base.theme || sample.theme),
   };
 };

@@ -2,6 +2,8 @@ const SESSION_KEY = "cv-builder-session-v1";
 const LAST_CV_KEY_PREFIX = "cv-builder-last-cv";
 const CV_DRAFT_KEY_PREFIX = "cv-builder-draft";
 const WORKSPACE_SCREEN_KEY_PREFIX = "cv-builder-workspace-screen";
+const TEMPLATE_PREVIEW_KEY_PREFIX = "cv-builder-template-preview";
+const TEMPLATE_PREVIEW_SOURCE_KEY_PREFIX = "cv-builder-template-preview-source";
 
 const safeParse = (value) => {
   try {
@@ -70,6 +72,38 @@ export function saveWorkspaceScreen(userId, screen) {
   }
 
   window.localStorage.setItem(`${WORKSPACE_SCREEN_KEY_PREFIX}:${userId}`, screen);
+}
+
+export function loadTemplatePreviewId(userId) {
+  if (typeof window === "undefined" || !userId) return "";
+  return window.localStorage.getItem(`${TEMPLATE_PREVIEW_KEY_PREFIX}:${userId}`) || "";
+}
+
+export function saveTemplatePreviewId(userId, templateId) {
+  if (typeof window === "undefined" || !userId) return;
+
+  if (!templateId) {
+    window.localStorage.removeItem(`${TEMPLATE_PREVIEW_KEY_PREFIX}:${userId}`);
+    return;
+  }
+
+  window.localStorage.setItem(`${TEMPLATE_PREVIEW_KEY_PREFIX}:${userId}`, templateId);
+}
+
+export function loadTemplatePreviewSource(userId) {
+  if (typeof window === "undefined" || !userId) return "library";
+  return window.localStorage.getItem(`${TEMPLATE_PREVIEW_SOURCE_KEY_PREFIX}:${userId}`) || "library";
+}
+
+export function saveTemplatePreviewSource(userId, screen) {
+  if (typeof window === "undefined" || !userId) return;
+
+  if (!screen) {
+    window.localStorage.removeItem(`${TEMPLATE_PREVIEW_SOURCE_KEY_PREFIX}:${userId}`);
+    return;
+  }
+
+  window.localStorage.setItem(`${TEMPLATE_PREVIEW_SOURCE_KEY_PREFIX}:${userId}`, screen);
 }
 
 function getDraftKey(userId, cvId) {

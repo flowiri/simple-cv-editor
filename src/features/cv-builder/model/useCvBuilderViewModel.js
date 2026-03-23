@@ -2,18 +2,27 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   changePassword,
   createCv,
+  createCvFromTemplate,
   deleteCvs,
+  deleteTemplates,
   exportCvPdf,
   fetchCvById,
   fetchCvList,
+  fetchPublicTemplateList,
   fetchSession,
+  fetchTemplateById,
+  fetchTemplateList,
   loginLocalAccount,
   logoutSession,
   renameCv,
+  renameTemplate,
   registerLocalAccount,
   saveCv,
+  saveTemplate,
+  setTemplateVisibility,
 } from "../../../utils/api.js";
 import { applySeedDataToCv, createBlankCv } from "../../../utils/cvData.js";
+import { normalizeStoredCvTheme } from "../../../utils/cvThemes.js";
 import {
   clearCvDraft,
   clearSession,
@@ -62,12 +71,30 @@ function mergeCvIntoList(list, cvDocument) {
   return [nextItem, ...remaining];
 }
 
+function mergeTemplateIntoList(list, template) {
+  if (!template?.id) {
+    return list;
+  }
+
+  const remaining = Array.isArray(list)
+    ? list.filter((item) => item.id !== template.id)
+    : [];
+
+  return [template, ...remaining];
+}
+
 async function loadWorkspaceData(token, userId, preferredCvId = "") {
-  let cvs = await fetchCvList(token);
+  const [cvs, templates, publicTemplates] = await Promise.all([
+    fetchCvList(token),
+    fetchTemplateList(token),
+    fetchPublicTemplateList(token),
+  ]);
 
   if (!Array.isArray(cvs) || cvs.length === 0) {
     return {
       cvs,
+      templates,
+      publicTemplates,
       currentCv: createBlankCv(),
       persistedCv: createBlankCv(),
       selectedCvId: "",
@@ -84,6 +111,8 @@ async function loadWorkspaceData(token, userId, preferredCvId = "") {
 
   return {
     cvs,
+    templates,
+    publicTemplates,
     currentCv,
     persistedCv: serverCv,
     selectedCvId,
@@ -101,9 +130,12 @@ export function useCvBuilderViewModel() {
   const [authStatus, setAuthStatus] = useState("idle");
   const [authError, setAuthError] = useState("");
   const [cvList, setCvList] = useState([]);
+  const [templateList, setTemplateList] = useState([]);
+  const [publicTemplateList, setPublicTemplateList] = useState([]);
   const [selectedCvId, setSelectedCvId] = useState("");
   const [passwordLabel, setPasswordLabel] = useState("Change Password");
   const [passwordError, setPasswordError] = useState("");
+  const [templateSaveLabel, setTemplateSaveLabel] = useState("Save as Template");
   const [autoSaveLabel, setAutoSaveLabel] = useState("Saved");
   const autoSaveTimeoutRef = useRef(null);
   const autoSaveFlashTimeoutRef = useRef(null);
@@ -143,6 +175,8 @@ export function useCvBuilderViewModel() {
   const loadWorkspace = async (activeSession, preferredCvId = "") => {
     if (!activeSession?.token || !activeSession?.user?.id) {
       setCvList([]);
+      setTemplateList([]);
+      setPublicTemplateList([]);
       setSelectedCvId("");
       dispatch({ type: "set-cv", value: createBlankCv() });
       setWorkspaceStatus("idle");
@@ -157,6 +191,8 @@ export function useCvBuilderViewModel() {
     );
 
     setCvList(workspace.cvs);
+    setTemplateList(workspace.templates || []);
+    setPublicTemplateList(workspace.publicTemplates || []);
     setSelectedCvId(workspace.selectedCvId);
     saveLastCvId(activeSession.user.id, workspace.selectedCvId);
     dispatch({ type: "set-cv", value: workspace.currentCv });
@@ -189,6 +225,8 @@ export function useCvBuilderViewModel() {
         if (cancelled) return;
         applySession(null);
         setCvList([]);
+        setTemplateList([]);
+        setPublicTemplateList([]);
         setSelectedCvId("");
         markPersisted(createBlankCv());
         setWorkspaceStatus("idle");
@@ -305,6 +343,19 @@ export function useCvBuilderViewModel() {
     }
   };
 
+  const refreshTemplateCollections = async (token) => {
+    const [ownedTemplates, publicTemplates] = await Promise.all([
+      fetchTemplateList(token),
+      fetchPublicTemplateList(token),
+    ]);
+    setTemplateList(ownedTemplates || []);
+    setPublicTemplateList(publicTemplates || []);
+    return {
+      ownedTemplates,
+      publicTemplates,
+    };
+  };
+
   const handleSave = async () => {
     if (!session?.token) return;
 
@@ -335,17 +386,18 @@ export function useCvBuilderViewModel() {
     }, 1400);
   };
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = async (documentOverride) => {
     if (!session?.token) return;
+    const exportDocument = documentOverride || state.cv;
 
     dispatch({ type: "set-export-label", value: "Rendering..." });
 
     try {
-      const pdfBlob = await exportCvPdf(session.token, state.cv);
+      const pdfBlob = await exportCvPdf(session.token, exportDocument);
       const fileUrl = window.URL.createObjectURL(pdfBlob);
       const anchor = document.createElement("a");
       anchor.href = fileUrl;
-      anchor.download = `${(state.cv.name || "cv").trim() || "cv"}.pdf`;
+      anchor.download = `${(exportDocument.name || "cv").trim() || "cv"}.pdf`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -416,11 +468,14 @@ export function useCvBuilderViewModel() {
 
     applySession(null);
     setCvList([]);
+    setTemplateList([]);
+    setPublicTemplateList([]);
     setSelectedCvId("");
     setAuthStatus("idle");
     setAuthError("");
     setPasswordError("");
     setPasswordLabel("Change Password");
+    setTemplateSaveLabel("Save as Template");
     dispatch({ type: "set-cv", value: createBlankCv() });
     dispatch({ type: "set-save-label", value: "Save" });
     dispatch({ type: "set-export-label", value: "Export PDF" });
@@ -471,6 +526,44 @@ export function useCvBuilderViewModel() {
     }
   };
 
+  const handleCreateCvFromTemplate = async (templateId) => {
+    if (!session?.token || !templateId) return false;
+
+    setWorkspaceStatus("loading");
+
+    try {
+      const createdCv = await createCvFromTemplate(session.token, templateId);
+      const nextList = await fetchCvList(session.token);
+      setCvList(nextList);
+      setSelectedCvId(createdCv.id);
+      saveLastCvId(session.user.id, createdCv.id);
+      dispatch({ type: "set-cv", value: createdCv });
+      markPersisted(createdCv);
+      clearCvDraft(session.user.id, createdCv.id);
+      setAutoSaveLabel("Saved");
+      setWorkspaceStatus("ready");
+      return true;
+    } catch {
+      setWorkspaceStatus("ready");
+      return false;
+    }
+  };
+
+  const handlePreviewTemplate = async (templateId) => {
+    if (!session?.token || !templateId) return null;
+
+    setWorkspaceStatus("loading");
+
+    try {
+      const template = await fetchTemplateById(session.token, templateId);
+      setWorkspaceStatus("ready");
+      return template;
+    } catch {
+      setWorkspaceStatus("ready");
+      return null;
+    }
+  };
+
   const handleLoadSampleData = () => {
     dispatch({
       type: "set-cv",
@@ -502,6 +595,51 @@ export function useCvBuilderViewModel() {
     }
   };
 
+  const handleRenameTemplateName = async (templateId, nextName) => {
+    if (!session?.token || !templateId) return false;
+
+    const safeName = String(nextName || "").trim() || "Untitled Template";
+
+    try {
+      const renamed = await renameTemplate(session.token, templateId, safeName);
+      setTemplateList((current) =>
+        current.map((item) => (item.id === templateId ? { ...item, ...renamed } : item))
+      );
+      setPublicTemplateList((current) =>
+        current.map((item) => (
+          item.id === templateId
+            ? { ...item, ...renamed, ownerUsername: renamed.ownerUsername || item.ownerUsername }
+            : item
+        ))
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleDeleteTemplates = async (ids) => {
+    if (!session?.token) return false;
+
+    const safeIds = Array.isArray(ids)
+      ? [...new Set(ids.map((value) => String(value || "").trim()).filter(Boolean))]
+      : [];
+
+    if (safeIds.length === 0) return false;
+
+    setWorkspaceStatus("loading");
+
+    try {
+      await deleteTemplates(session.token, safeIds);
+      await refreshTemplateCollections(session.token);
+      setWorkspaceStatus("ready");
+      return true;
+    } catch {
+      setWorkspaceStatus("ready");
+      return false;
+    }
+  };
+
   const handleChangePassword = async (currentPassword, nextPassword) => {
     if (!session?.token) return;
 
@@ -522,6 +660,50 @@ export function useCvBuilderViewModel() {
     }, 1800);
 
     return true;
+  };
+
+  const handleSaveCurrentCvAsTemplate = async (templateName, templateId = "") => {
+    if (!session?.token) return false;
+
+    setTemplateSaveLabel(templateId ? "Updating..." : "Saving...");
+
+    try {
+      const savedTemplate = await saveTemplate(
+        session.token,
+        templateName,
+        state.cv,
+        templateId
+      );
+      setTemplateList((current) => mergeTemplateIntoList(current, savedTemplate));
+      setTemplateSaveLabel(templateId ? "Template updated" : "Template saved");
+      await refreshTemplateCollections(session.token);
+    } catch {
+      setTemplateSaveLabel("Save failed");
+      return false;
+    }
+
+    window.setTimeout(() => {
+      setTemplateSaveLabel("Save as Template");
+    }, 1800);
+
+    return true;
+  };
+
+  const handleSetTemplateVisibility = async (templateId, isPublic) => {
+    if (!session?.token || !templateId) return false;
+
+    try {
+      const updated = await setTemplateVisibility(session.token, templateId, isPublic);
+      setTemplateList((current) =>
+        current.map((item) => (item.id === templateId ? { ...item, ...updated } : item))
+      );
+
+      const nextPublicTemplates = await fetchPublicTemplateList(session.token);
+      setPublicTemplateList(nextPublicTemplates || []);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   return {
@@ -547,6 +729,28 @@ export function useCvBuilderViewModel() {
         type: "set-cv",
         updater: (current) => ({ ...current, name: value }),
       }),
+    setThemePreset: (presetId) =>
+      dispatch({
+        type: "set-cv",
+        updater: (current) => ({
+          ...current,
+          theme: normalizeStoredCvTheme({ presetId, customColors: {} }),
+        }),
+      }),
+    updateThemeColor: (key, value) =>
+      dispatch({
+        type: "set-cv",
+        updater: (current) => ({
+          ...current,
+          theme: normalizeStoredCvTheme({
+            presetId: "custom",
+            customColors: {
+              ...(current.theme?.customColors || {}),
+              [key]: value,
+            },
+          }),
+        }),
+      }),
     updateBasics: (key, value) => dispatch({ type: "update-basics", key, value }),
     updateSection: (sectionId, updater) =>
       dispatch({ type: "update-section", sectionId, updater }),
@@ -570,17 +774,26 @@ export function useCvBuilderViewModel() {
     authStatus,
     authError,
     cvList,
+    templateList,
+    publicTemplateList,
     selectedCvId,
     login: (username, password) => authenticate("login", username, password),
     register: (username, password) => authenticate("register", username, password),
     logout: handleLogout,
     createNewCv: handleCreateCv,
+    createNewCvFromTemplate: handleCreateCvFromTemplate,
+    previewTemplate: handlePreviewTemplate,
     selectCv: handleSelectCv,
     deleteManyCvs: handleDeleteCvs,
+    deleteManyTemplates: handleDeleteTemplates,
     renameCvName: handleRenameCvName,
+    renameTemplateName: handleRenameTemplateName,
+    setTemplateVisibility: handleSetTemplateVisibility,
+    saveCurrentCvAsTemplate: handleSaveCurrentCvAsTemplate,
     changePassword: handleChangePassword,
     loadSampleData: handleLoadSampleData,
     autoSaveLabel,
+    templateSaveLabel,
     passwordLabel,
     passwordError,
   };

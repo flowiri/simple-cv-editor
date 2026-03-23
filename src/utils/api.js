@@ -75,6 +75,18 @@ export function fetchCvList(token) {
   return apiJson("/api/cvs", { token });
 }
 
+export function fetchTemplateList(token) {
+  return apiJson("/api/templates", { token });
+}
+
+export function fetchPublicTemplateList(token) {
+  return apiJson("/api/templates/public", { token });
+}
+
+export function fetchTemplateById(token, templateId) {
+  return apiJson(`/api/templates/${templateId}`, { token });
+}
+
 export function fetchCvById(token, cvId) {
   return apiJson(`/api/cvs/${cvId}`, { token });
 }
@@ -107,11 +119,50 @@ export function renameCv(token, cvId, name) {
   });
 }
 
+export function renameTemplate(token, templateId, name) {
+  return apiJson(`/api/templates/${templateId}/rename`, {
+    method: "POST",
+    token,
+    body: { name },
+  });
+}
+
+export function setTemplateVisibility(token, templateId, isPublic) {
+  return apiJson(`/api/templates/${templateId}/visibility`, {
+    method: "POST",
+    token,
+    body: { isPublic },
+  });
+}
+
 export function saveCv(token, cv) {
   return apiJson("/api/cvs", {
     method: "POST",
     token,
     body: cv,
+  });
+}
+
+export function saveTemplate(token, name, document, templateId = "") {
+  return apiJson("/api/templates", {
+    method: "POST",
+    token,
+    body: { name, document, templateId },
+  });
+}
+
+export function deleteTemplates(token, ids) {
+  return apiJson("/api/templates/delete", {
+    method: "POST",
+    token,
+    body: { ids },
+  });
+}
+
+export function createCvFromTemplate(token, templateId) {
+  return apiJson(`/api/templates/${templateId}/create-cv`, {
+    method: "POST",
+    token,
   });
 }
 

@@ -1,4 +1,5 @@
 import { createBlankCv } from "../src/utils/cvData.js";
+import { normalizeStoredCvTheme, resolveCvTheme } from "../src/utils/cvThemes.js";
 import { parseBulletLines, parseWorkDescription } from "../src/utils/parsers.js";
 import { getSectionKind, normalizeSection } from "../src/utils/sections.js";
 
@@ -260,20 +261,20 @@ function renderSection(section) {
   `;
 }
 
-function buildCss() {
+function buildCss(theme) {
   return `
     @page { size: A4; margin: 15mm 16mm 16mm 16mm; }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: Aptos, "Segoe UI", sans-serif; color: #11212d; background: white; }
+    body { margin: 0; font-family: Aptos, "Segoe UI", sans-serif; color: ${theme.text}; background: white; }
     .cv-document { background: white; }
-    .cv-header { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1rem; padding-bottom: 0.8rem; border-bottom: 2px solid #d7dee7; }
+    .cv-header { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1rem; padding-bottom: 0.8rem; border-bottom: 2px solid ${theme.line}; }
     .cv-header h1 { margin: 0; font-size: 1.9rem; letter-spacing: 0.02em; }
-    .cv-headline { margin: 0.3rem 0 0; color: #0b4f46; font-weight: 700; }
+    .cv-headline { margin: 0.3rem 0 0; color: ${theme.accentStrong}; font-weight: 700; }
     .contact-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.28rem; font-size: 0.73rem; }
     .contact-list span { font-weight: 700; }
     .contact-list a { color: inherit; text-decoration: none; }
     .cv-section { margin-top: 0.8rem; break-inside: auto; page-break-inside: auto; }
-    .cv-section h2 { margin: 0 0 0.45rem; font-size: 0.83rem; letter-spacing: 0.16em; text-transform: uppercase; color: #0f766e; }
+    .cv-section h2 { margin: 0 0 0.45rem; font-size: 0.83rem; letter-spacing: 0.16em; text-transform: uppercase; color: ${theme.accent}; }
     .cv-section p, .cv-section li, .entry-subtitle, .entry-meta, .entry-description, .education-copy, .publication-authors, .publication-venue, .publication-link, .publication-notes, .achievement-copy, .certificate-copy, .work-detail-line, .work-detail-label, .responsibility-list li, .responsibility-copy { font-size: 0.77rem; line-height: 1.5; }
     .bullet-list { margin: 0; padding-left: 1rem; }
     .bullet-list li + li { margin-top: 0.32rem; }
@@ -283,40 +284,40 @@ function buildCss() {
     .cv-entry { padding: 0.22rem 0.35rem; break-inside: avoid; page-break-inside: avoid; }
     .entry-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.8rem; }
     .cv-entry h3 { margin: 0; font-size: 0.92rem; }
-    .entry-meta, .entry-subtitle { margin: 0; color: #5b6b7d; }
+    .entry-meta, .entry-subtitle { margin: 0; color: ${theme.muted}; }
     .entry-description { margin: 0.22rem 0 0; }
-    .cv-date { align-self: start; padding: 0; border-radius: 0; background: transparent; color: #0b4f46; font-size: 0.71rem; font-weight: 700; white-space: nowrap; }
+    .cv-date { align-self: start; padding: 0; border-radius: 0; background: transparent; color: ${theme.accentStrong}; font-size: 0.71rem; font-weight: 700; white-space: nowrap; }
     .publication-authors, .publication-venue, .publication-link, .publication-notes { margin: 0.1rem 0 0; }
-    .publication-authors { color: #102a43; line-height: 1.45; }
-    .publication-venue { color: #486581; font-style: italic; line-height: 1.45; }
-    .publication-link a { color: #0b4f46; text-decoration: none; word-break: break-all; font-size: 0.77rem; }
-    .publication-notes { color: #243b53; line-height: 1.45; }
+    .publication-authors { color: ${theme.copyStrong}; line-height: 1.45; }
+    .publication-venue { color: ${theme.mutedSoft}; font-style: italic; line-height: 1.45; }
+    .publication-link a { color: ${theme.accentStrong}; text-decoration: none; word-break: break-all; font-size: 0.77rem; }
+    .publication-notes { color: ${theme.copySoft}; line-height: 1.45; }
     .achievement-list { display: grid; gap: 0.45rem; }
     .achievement-row { display: grid; grid-template-columns: 14px 1fr auto; align-items: start; gap: 0.7rem; padding: 0.28rem 0.45rem; border-radius: 10px; break-inside: avoid; page-break-inside: avoid; }
-    .achievement-dot { display: inline-block; width: 14px; color: #0f766e; font-size: 1.1rem; line-height: 1; font-weight: 700; text-align: center; margin-top: 0.05rem; }
+    .achievement-dot { display: inline-block; width: 14px; color: ${theme.accent}; font-size: 1.1rem; line-height: 1; font-weight: 700; text-align: center; margin-top: 0.05rem; }
     .achievement-copy, .certificate-copy { margin: 0; }
     .publication-card { padding: 0.22rem 0.35rem; margin: 0 -0.35rem; border: 0; border-radius: 10px; background: transparent; }
     .education-card { padding: 0.22rem 0.35rem; margin: 0 -0.35rem; border-radius: 10px; border: 0; background: transparent; }
-    .education-copy { color: #243b53; line-height: 1.55; }
+    .education-copy { color: ${theme.copySoft}; line-height: 1.55; }
     .certificate-list { gap: 0.45rem; }
     .certificate-row { padding: 0.28rem 0.45rem; border-radius: 10px; border: 0; background: transparent; }
     .certificate-main { min-width: 0; }
     .certificate-copy { font-weight: 700; }
-    .cv-entry-work { padding: 0.45rem 0.2rem 0.35rem; border-radius: 0; border: 0; border-bottom: 1px solid rgba(15, 118, 110, 0.14); background: transparent; }
+    .cv-entry-work { padding: 0.45rem 0.2rem 0.35rem; border-radius: 0; border: 0; border-bottom: 1px solid ${theme.line}; background: transparent; }
     .work-detail-grid { display: grid; gap: 0.32rem; margin-top: 0.45rem; }
     .work-detail-line { margin: 0; }
-    .work-detail-line span, .work-detail-label { color: #0b4f46; font-weight: 700; }
+    .work-detail-line span, .work-detail-label { color: ${theme.accentStrong}; font-weight: 700; }
     .work-detail-line span { display: inline-block; min-width: 92px; margin-right: 0.4rem; }
     .work-detail-block { display: grid; gap: 0.18rem; margin-top: 0.15rem; }
     .responsibility-list { margin: 0; padding-left: 1.05rem; display: grid; gap: 0.22rem; }
     .responsibility-copy { min-width: 0; line-height: 1.5; }
     .tech-stack { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.55rem; }
-    .tech-pill { padding: 0.14rem 0.45rem; border: 1px solid rgba(15, 118, 110, 0.18); border-radius: 999px; background: rgba(15, 118, 110, 0.06); color: #0b4f46; font-size: 0.66rem; line-height: 1.2; }
-    .education-card .entry-topline h3, .certificate-copy { color: #102a43; letter-spacing: 0.01em; }
-    .publication-card .entry-topline h3 { color: #102a43; letter-spacing: 0.01em; font-size: 0.9rem; font-weight: 700; line-height: 1.35; max-width: 82%; }
+    .tech-pill { padding: 0.14rem 0.45rem; border: 1px solid ${theme.chipBorder}; border-radius: 999px; background: ${theme.chipBackground}; color: ${theme.accentStrong}; font-size: 0.66rem; line-height: 1.2; }
+    .education-card .entry-topline h3, .certificate-copy { color: ${theme.copyStrong}; letter-spacing: 0.01em; }
+    .publication-card .entry-topline h3 { color: ${theme.copyStrong}; letter-spacing: 0.01em; font-size: 0.9rem; font-weight: 700; line-height: 1.35; max-width: 82%; }
     .education-card .entry-topline, .publication-card .entry-topline { align-items: flex-start; }
     .education-card .entry-topline h3 { line-height: 1.35; max-width: 82%; }
-    .education-card .entry-subtitle, .certificate-row .entry-subtitle { color: #486581; }
+    .education-card .entry-subtitle, .certificate-row .entry-subtitle { color: ${theme.mutedSoft}; }
     .education-card .entry-subtitle, .publication-card .entry-subtitle, .education-copy, .publication-authors, .publication-venue, .publication-link, .publication-notes { padding-right: 1.8rem; }
     .education-card .cv-date, .publication-card .cv-date { margin-top: 0.06rem; font-size: 0.78rem; }
     .cv-section h2 { break-after: avoid; page-break-after: avoid; }
@@ -331,6 +332,7 @@ export function normalizeCvDocument(inputCv) {
     ...(inputCv && typeof inputCv === "object" ? inputCv : {}),
     id: inputCv?.id || seed.id,
     name: inputCv?.name || seed.name,
+    theme: normalizeStoredCvTheme(inputCv?.theme || seed.theme),
     basics: {
       ...seed.basics,
       ...(inputCv?.basics && typeof inputCv.basics === "object" ? inputCv.basics : {}),
@@ -343,6 +345,7 @@ export function normalizeCvDocument(inputCv) {
 
 export function renderCvHtml(inputCv) {
   const cv = normalizeCvDocument(inputCv);
+  const theme = resolveCvTheme(cv.theme);
   const visibleSections = (cv.sections || []).filter((section) => section.visible !== false);
 
   return `
@@ -351,7 +354,7 @@ export function renderCvHtml(inputCv) {
       <head>
         <meta charset="utf-8" />
         <title>${escapeHtml(cv.name)}</title>
-        <style>${buildCss()}</style>
+        <style>${buildCss(theme)}</style>
       </head>
       <body>
         <article class="cv-document">
