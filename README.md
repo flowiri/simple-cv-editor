@@ -11,6 +11,9 @@ Architecture in this version:
 
 Main features:
 
+- local-account registration and login
+- per-user CV ownership and CV library management
+- password change flow for signed-in users
 - form-based CV editing
 - server-backed CV persistence in PostgreSQL
 - dedicated `CV name` field

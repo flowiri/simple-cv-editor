@@ -3,11 +3,9 @@ import { Field } from "./Field.jsx";
 import { TextAreaField } from "./TextAreaField.jsx";
 
 export function BasicsPanel({
-  cvName,
   basics,
   activeInspectorTarget,
   registerEditorTarget,
-  updateCvName,
   updateBasics,
 }) {
   const isInspectorTarget = activeInspectorTarget === "basics-summary";
@@ -24,12 +22,6 @@ export function BasicsPanel({
         </div>
       </div>
       <div className="form-grid">
-        <Field
-          className="full-span"
-          label="CV name"
-          value={cvName || ""}
-          onChange={updateCvName}
-        />
         {basicsFields.map(([key, label]) => (
           <Field
             key={key}

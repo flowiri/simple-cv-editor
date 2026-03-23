@@ -1,4 +1,4 @@
-import { createSeedCv, mergeWithDefaultSections } from "../src/utils/cvData.js";
+import { createBlankCv } from "../src/utils/cvData.js";
 import { parseBulletLines, parseWorkDescription } from "../src/utils/parsers.js";
 import { getSectionKind, normalizeSection } from "../src/utils/sections.js";
 
@@ -324,7 +324,7 @@ function buildCss() {
 }
 
 export function normalizeCvDocument(inputCv) {
-  const seed = createSeedCv();
+  const seed = createBlankCv();
 
   return {
     ...seed,
@@ -336,7 +336,7 @@ export function normalizeCvDocument(inputCv) {
       ...(inputCv?.basics && typeof inputCv.basics === "object" ? inputCv.basics : {}),
     },
     sections: Array.isArray(inputCv?.sections)
-      ? mergeWithDefaultSections(inputCv.sections.map(normalizeSection))
+      ? inputCv.sections.map(normalizeSection)
       : seed.sections,
   };
 }

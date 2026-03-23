@@ -1,78 +1,94 @@
-import { STORAGE_KEY } from "../constants/index.js";
-import { createSeedCv, mergeWithDefaultSections } from "./cvData.js";
-import { bulletsToContent, parseWorkDescription } from "./parsers.js";
-import {
-  normalizeSection,
-  normalizeAchievementItem,
-  normalizePublicationItem,
-  getSectionKind,
-} from "./sections.js";
+const SESSION_KEY = "cv-builder-session-v1";
+const LAST_CV_KEY_PREFIX = "cv-builder-last-cv";
+const CV_DRAFT_KEY_PREFIX = "cv-builder-draft";
+const WORKSPACE_SCREEN_KEY_PREFIX = "cv-builder-workspace-screen";
 
-export { STORAGE_KEY };
-
-export function loadInitialState() {
+const safeParse = (value) => {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return createSeedCv();
-
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return createSeedCv();
-
-    const seed = createSeedCv();
-    return {
-      id: parsed.id || seed.id,
-      name: parsed.name || seed.name,
-      basics: {
-        ...seed.basics,
-        ...(parsed.basics && typeof parsed.basics === "object" ? parsed.basics : {}),
-      },
-      sections: Array.isArray(parsed.sections)
-        ? mergeWithDefaultSections(
-          parsed.sections.map((section) => {
-            const normalized = normalizeSection(section);
-            const kind = getSectionKind(normalized.title, normalized.type);
-
-            if (kind === "achievements") {
-              return { ...normalized, items: normalized.items.map(normalizeAchievementItem) };
-            }
-
-            if (kind === "publications") {
-              return { ...normalized, items: normalized.items.map(normalizePublicationItem) };
-            }
-
-            if (kind === "professional-summary") {
-              return {
-                ...normalized,
-                content: normalized.content || bulletsToContent(normalized.items),
-                items: [],
-              };
-            }
-
-            if (kind === "work-experience") {
-              return {
-                ...normalized,
-                items: normalized.items.map((item) => {
-                  const parsedWork = parseWorkDescription(item.description);
-                  return {
-                    ...item,
-                    customers: item.customers || parsedWork.customers,
-                    responsibilities: item.responsibilities || parsedWork.responsibilities,
-                    technologies:
-                      item.technologies ||
-                      (parsedWork.technologies.length > 0
-                        ? parsedWork.technologies.join(", ")
-                        : ""),
-                  };
-                }),
-              };
-            }
-
-            return normalized;
-          })
-        )
-        : seed.sections,
-    };
+    return JSON.parse(value);
   } catch {
-    return createSeedCv();
+    return null;
   }
+};
+
+export function loadSession() {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(SESSION_KEY);
+  if (!raw) return null;
+  const parsed = safeParse(raw);
+
+  if (!parsed?.token || !parsed?.user?.id) {
+    return null;
+  }
+
+  return parsed;
+}
+
+export function saveSession(session) {
+  if (typeof window === "undefined") return;
+
+  if (!session?.token || !session?.user?.id) {
+    window.localStorage.removeItem(SESSION_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+export function clearSession() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(SESSION_KEY);
+}
+
+export function loadLastCvId(userId) {
+  if (typeof window === "undefined" || !userId) return "";
+  return window.localStorage.getItem(`${LAST_CV_KEY_PREFIX}:${userId}`) || "";
+}
+
+export function saveLastCvId(userId, cvId) {
+  if (typeof window === "undefined" || !userId) return;
+
+  if (!cvId) {
+    window.localStorage.removeItem(`${LAST_CV_KEY_PREFIX}:${userId}`);
+    return;
+  }
+
+  window.localStorage.setItem(`${LAST_CV_KEY_PREFIX}:${userId}`, cvId);
+}
+
+export function loadWorkspaceScreen(userId) {
+  if (typeof window === "undefined" || !userId) return "library";
+  return window.localStorage.getItem(`${WORKSPACE_SCREEN_KEY_PREFIX}:${userId}`) || "library";
+}
+
+export function saveWorkspaceScreen(userId, screen) {
+  if (typeof window === "undefined" || !userId) return;
+
+  if (!screen) {
+    window.localStorage.removeItem(`${WORKSPACE_SCREEN_KEY_PREFIX}:${userId}`);
+    return;
+  }
+
+  window.localStorage.setItem(`${WORKSPACE_SCREEN_KEY_PREFIX}:${userId}`, screen);
+}
+
+function getDraftKey(userId, cvId) {
+  return `${CV_DRAFT_KEY_PREFIX}:${userId}:${cvId}`;
+}
+
+export function loadCvDraft(userId, cvId) {
+  if (typeof window === "undefined" || !userId || !cvId) return null;
+  const raw = window.localStorage.getItem(getDraftKey(userId, cvId));
+  if (!raw) return null;
+  return safeParse(raw);
+}
+
+export function saveCvDraft(userId, cvId, cv) {
+  if (typeof window === "undefined" || !userId || !cvId || !cv) return;
+  window.localStorage.setItem(getDraftKey(userId, cvId), JSON.stringify(cv));
+}
+
+export function clearCvDraft(userId, cvId) {
+  if (typeof window === "undefined" || !userId || !cvId) return;
+  window.localStorage.removeItem(getDraftKey(userId, cvId));
 }

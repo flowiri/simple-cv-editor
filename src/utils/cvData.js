@@ -92,7 +92,7 @@ export const createDefaultSections = () => [
       type: "bullet-list",
       title: "Professional Summary",
       content:
-        "- 4+ years of experience with application security assessment and penetration testing including web, mobile applications, infrastructure, network segments and cloud platforms (AWS, Azure).\n- Supporting the development team to adjust security issues severity and resolve reported security issues in the most proper way.\n- Experience in using a variety of vulnerability scanners and manual penetration testing tools.\n- Experience with security training, mentoring for freshers.\n- Team-player and professional working behavior with ability to work independently.\n- Willing to learn new technologies and processes, improve professional skills and adapt to new environments.",
+        "- 5+ years of experience in security engineering, vulnerability assessment, and secure delivery for web and cloud platforms.\n- Strong background in translating technical findings into practical remediation plans for product and engineering teams.\n- Comfortable combining hands-on testing, architecture review, and lightweight automation to improve security coverage.\n- Experience mentoring junior engineers and building reusable internal processes for recurring security work.\n- Clear communicator with a collaborative working style across engineering, product, and operations teams.",
       items: [],
     },
     {
@@ -102,17 +102,17 @@ export const createDefaultSections = () => [
       title: "Education",
       items: [
         createEntryItem({
-          title: "Vietnam National University - University of Engineering and Technology",
-          subtitle: "Major: Information Assurance",
-          meta: "2023 - Now",
+          title: "Northbridge Institute of Technology",
+          subtitle: "M.Sc. in Cybersecurity",
+          meta: "2022 - 2024",
           description:
-            "Thesis: Vulnerability detection using adaptive federated learning\nSupervisor: PhD. Dai Tho Nguyen\n(expected to defend in 05/2026)",
+            "Research focus: practical approaches for application security testing and cloud security monitoring.",
         }),
         createEntryItem({
-          title: "FPT University",
-          subtitle: "Major: Information Assurance",
-          meta: "2018 - 2022",
-          description: "Graduate as Valedictorian of the Engineering sector (GPA: 9.1/10)",
+          title: "Riverside University",
+          subtitle: "B.Eng. in Software Engineering",
+          meta: "2016 - 2020",
+          description: "Graduated with distinction and completed a capstone project on secure application design.",
         }),
       ],
     },
@@ -122,9 +122,9 @@ export const createDefaultSections = () => [
       type: "entry-list",
       title: "Certificates",
       items: [
-        createEntryItem({ title: "OffSec Certified Professional (OSCP)", meta: "07/2024" }),
-        createEntryItem({ title: "AWS Certified Solution Architect - Associate", meta: "02/2024" }),
-        createEntryItem({ title: "OffSec Web Expert (OSWE)", meta: "04/2023" }),
+        createEntryItem({ title: "Certified Cloud Security Practitioner (CCSP)", meta: "2024" }),
+        createEntryItem({ title: "AWS Certified Security - Specialty", meta: "2023" }),
+        createEntryItem({ title: "GIAC Web Application Penetration Tester (GWAPT)", meta: "2022" }),
       ],
     },
     {
@@ -134,30 +134,19 @@ export const createDefaultSections = () => [
       title: "Publications",
       items: [
         createPublicationItem({
-          title: "Adaptive Federated Learning for Software Vulnerability Detection.",
-          authors: "Thang Phung Duc, and Dai Tho Nguyen",
+          title: "Practical Patterns for Security Review in Fast-Moving Product Teams",
+          authors: "Alex Carter and Morgan Lee",
           venue:
-            "Proceedings of the 14th International Symposium on Information and Communication Technology (SoICT 2025), Nhatrang, Vietnam, 12-14, Springer Communications in Computer and Information Science (CCIS) Series",
-          meta: "December, 2025",
+            "Proceedings of the Applied Software Security Forum, Technical Practice Track",
+          meta: "2024",
         }),
         createPublicationItem({
-          title:
-            "FU Covid-19 AI Agent built on Attention algorithm using a combination of Transformer, ALBERT model, and RASA framework",
-          authors:
-            "Ban Quy Tran, Thai Van Nguyen, Thang Duc Phung, Viet Tan Nguyen, Dat Duy Tran, and Son Tung Ngo",
+          title: "Improving Application Security Feedback Loops with Lightweight Automation",
+          authors: "Alex Carter, Priya Shah, and Jordan Kim",
           venue:
-            "In Proceedings of the 10th International Conference on Software and Computer Applications (ICSCA '21). Association for Computing Machinery, New York, NY, USA, 22-31",
-          link: "https://doi.org/10.1145/3457784.3457788",
-          meta: "2021",
-        }),
-        createPublicationItem({
-          title:
-            "Design and Implementation a Secured and Distributed System using CBC, Socket, and RMI Technologies",
-          authors: "Thang Duc Phung, Thai Van Nguyen, and Ban Quy Tran",
-          venue:
-            "In Proceedings of the 10th International Conference on Software and Computer Applications (ICSCA '21). Association for Computing Machinery, New York, NY, USA, 238-243",
-          link: "https://doi.org/10.1145/3457784.3457830",
-          meta: "2021",
+            "Journal of Modern Engineering Practice, Vol. 12",
+          link: "https://example.com/sample-publication",
+          meta: "2023",
         }),
       ],
     },
@@ -168,28 +157,28 @@ export const createDefaultSections = () => [
       title: "Outstanding Projects",
       items: [
         createEntryItem({
-          title: "FPT Internal BugBounty",
-          subtitle: "Bug Hunter",
+          title: "Customer Identity Platform Refresh",
+          subtitle: "Lead Security Engineer",
+          meta: "2024",
+          tags: "",
+          description:
+            "Led security review activities for a high-traffic identity platform migration, covering threat modeling, API testing, and release-readiness guidance.",
+        }),
+        createEntryItem({
+          title: "Cloud Security Baseline Program",
+          subtitle: "Security Architect",
           meta: "2023",
           tags: "",
           description:
-            "Performed bug hunting on internet-facing web and application assets of FPT Corporation, uncovering critical vulnerabilities including SQL Injection and Privilege Escalation",
+            "Built reusable infrastructure guardrails and review checklists to help product teams launch cloud workloads with stronger defaults.",
         }),
         createEntryItem({
-          title: "Website violympic.vn",
-          subtitle: "Team Leader, Security Engineer",
-          meta: "2023",
+          title: "Secure SDLC Toolkit",
+          subtitle: "Application Security Engineer",
+          meta: "2022",
           tags: "",
           description:
-            "Discovered critical business logic vulnerabilities that enable online participants (students) to manipulate the exam system and achieve inflated scores (potentially 100) without actual learning",
-        }),
-        createEntryItem({
-          title: "TPBank",
-          subtitle: "Penetration Tester",
-          meta: "2021",
-          tags: "",
-          description:
-            "Conducted security assessments across multiple banking web applications (both internal and external), identifying critical vulnerabilities such as SQL Injection and Command Injection",
+            "Created internal templates for security requirements, issue triage, and remediation tracking to shorten turnaround on recurring review work.",
         }),
       ],
     },
@@ -199,10 +188,9 @@ export const createDefaultSections = () => [
       type: "bullet-list",
       title: "Professional Achievements",
       items: [
-        { ...createBulletItem("Rank 53rd out of 551 teams in Hack The Box Business: Global Cyber Skills Benchmark CTF 2025"), meta: "05/2025" },
-        { ...createBulletItem("First prize in an NAB Technical Hack The Box Challenge - Capture The Flag competition of Cyber Month event"), meta: "10/2025" },
-        { ...createBulletItem("First prize in an NAB Technical Hack The Box Challenge - Capture The Flag competition of Cyber Month event"), meta: "10/2024" },
-        { ...createBulletItem("Third prize in preliminary round of ASEAN Student Contest on Information Security"), meta: "10/2021" },
+        { ...createBulletItem("Designed and rolled out a reusable application security review checklist adopted by multiple product teams"), meta: "2024" },
+        { ...createBulletItem("Reduced average remediation turnaround for critical findings by partnering with engineering on fix patterns and guidance"), meta: "2023" },
+        { ...createBulletItem("Built internal automation to standardize evidence collection and reporting for recurring security assessments"), meta: "2022" },
       ],
     },
     {
@@ -212,37 +200,37 @@ export const createDefaultSections = () => [
       title: "Work Experience",
       items: [
         createEntryItem({
-          title: "National Australia Bank",
-          subtitle: "Analyst, Penetration Testing",
-          meta: "July 2023 - present",
-          tags: "Offensive Security",
-          customers: "Internal and External Banking Services of National Australia Bank",
+          title: "Northstar Digital",
+          subtitle: "Senior Security Engineer",
+          meta: "2023 - Present",
+          tags: "Application and Cloud Security",
+          customers: "Customer-facing platforms, internal services, and cloud infrastructure",
           responsibilities:
-            "- Perform vulnerability assessment and penetration testing for web, mobile applications, infrastructure, cloud platforms (AWS, Azure) and public resources.\n- Perform source code review to detect security vulnerabilities.\n- Support architecture reviews to define abuse cases and point out the security gaps that cause vulnerabilities, especially for authorization and business issues.\n- Conduct security research and report research results to widen range of possible test cases for the whole team.\n- Develop internal tools to help automate security processes in team.\n- Support response to security incidents by confirming and exploiting reported vulnerabilities.\n- Report detected vulnerabilities and consult developers in resolving security vulnerabilities.",
+            "- Perform security reviews for web applications, internal APIs, and cloud-hosted services.\n- Partner with engineering teams to validate findings, prioritize fixes, and improve security design decisions.\n- Develop small internal tools and templates to reduce repeated manual steps in review workflows.\n- Support architecture discussions with concrete abuse cases and practical remediation options.",
           technologies:
-            "Qualys, Nessus, NetSparker, Burp Suite, nmap, sqlmap, MOBSF, Frida, Bytecode Viewer, linpeas, winpeas, Java, Python, PHP",
+            "Burp Suite, Semgrep, OWASP ZAP, AWS, Docker, Python, JavaScript",
         }),
         createEntryItem({
-          title: "FPT Software",
-          subtitle: "Penetration Testing, Application Security Engineer",
-          meta: "June 2022 - June 2023",
-          tags: "Security Assurance Services",
-          customers: "Global customers with diverse domains: healthcare, finance, automotive, e-commerce and retail.",
+          title: "Summit Apps",
+          subtitle: "Application Security Engineer",
+          meta: "2021 - 2023",
+          tags: "Secure Delivery",
+          customers: "Product teams across SaaS, operations, and data platforms",
           responsibilities:
-            "- Perform vulnerability assessment and penetration testing for web and mobile applications.\n- Perform source code review to detect security vulnerabilities.\n- Mentor and support freshers to be able to work independently.\n- Conduct security research and report research results to widen range of possible test cases for the whole team.\n- Report detected vulnerabilities and consult developers in resolving security vulnerabilities.",
+            "- Reviewed new services and feature releases for security risks before production rollout.\n- Performed source code review and manual validation for common application security weaknesses.\n- Helped establish remediation guidance and recurring security education for development teams.",
           technologies:
-            "Accunetix, HCL AppScan, Nessus, Burp Suite, nmap, sqlmap, MOBSF, Frida, Bytecode Viewer, Java, Python, PHP",
+            "Snyk, GitHub Actions, Burp Suite, Postman, Node.js, TypeScript",
         }),
         createEntryItem({
-          title: "FPT Information System",
-          subtitle: "Penetration Testing, Vulnerability Assessment",
-          meta: "Jan 2021 - May 2022",
-          tags: "Cybersecurity Service Division",
-          customers: "Domestic customers with diverse domains: banking, financial, national service, etc.",
+          title: "Clearwater Systems",
+          subtitle: "Security Analyst",
+          meta: "2020 - 2021",
+          tags: "Security Operations and Assessment",
+          customers: "Internal applications and shared infrastructure",
           responsibilities:
-            "- Perform vulnerability assessment and penetration testing for web and mobile applications.\n- Perform source code review to detect security vulnerabilities.\n- Report detected vulnerabilities and consult developers in resolving security vulnerabilities.",
+            "- Supported recurring assessment work for business applications and internal infrastructure.\n- Documented findings, tracked remediation progress, and coordinated follow-up validation with service owners.",
           technologies:
-            "Accunetix, HCL AppScan, Nessus, Burp Suite, nmap, sqlmap, MOBSF, Frida, Bytecode Viewer, Java, Python, PHP",
+            "Nessus, Nmap, Linux, PowerShell, Python",
         }),
       ],
     },
@@ -266,18 +254,49 @@ export const mergeWithDefaultSections = (sections = []) => {
 
 export const createSeedCv = () => ({
   id: createId(),
-  name: "Phung Duc Thang CV",
+  name: "Alex Carter CV",
   basics: {
-    fullName: "Phung Duc Thang",
+    fullName: "Alex Carter",
     headline: "Security Engineer",
-    email: "thangpd2305.work@gmail.com",
-    phone: "(+84) 366198046",
-    nationality: "Vietnam",
-    dateOfBirth: "31/10/2000",
-    website: "https://flowiri.hashnode.dev/",
-    linkedin: "https://www.linkedin.com/in/phung-duc-thang-34b9512b5/",
+    email: "alex.carter@example.com",
+    phone: "+1 (555) 010-2048",
+    nationality: "Canadian",
+    dateOfBirth: "14/02/1994",
+    website: "https://example.dev",
+    linkedin: "https://www.linkedin.com/in/alex-carter-security",
     summary:
-      "Pursuing a professional penetration tester and security researcher career path in a healthy and positively pressing environment, so that I can continuously improve my technical skillset and expertise knowledge in securing critical applications and infrastructures of targeted customers.",
+      "Security engineer with experience across application reviews, cloud security practices, and developer-facing remediation support. Focused on practical security improvements that fit real product delivery timelines.",
   },
   sections: createDefaultSections(),
 });
+
+export const createBlankCv = () => ({
+  id: createId(),
+  name: "Untitled CV",
+  basics: {
+    fullName: "",
+    headline: "",
+    email: "",
+    phone: "",
+    nationality: "",
+    dateOfBirth: "",
+    website: "",
+    linkedin: "",
+    summary: "",
+  },
+  sections: [],
+});
+
+export const applySeedDataToCv = (currentCv) => {
+  const sample = createSeedCv();
+  const base = currentCv && typeof currentCv === "object" ? currentCv : {};
+
+  return {
+    ...sample,
+    id: base.id || sample.id,
+    name:
+      base.name && String(base.name).trim() && base.name !== "Untitled CV"
+        ? base.name
+        : sample.name,
+  };
+};

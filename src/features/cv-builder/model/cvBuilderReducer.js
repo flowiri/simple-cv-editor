@@ -1,4 +1,4 @@
-import { createSeedCv } from "../../../utils/cvData.js";
+import { applySeedDataToCv, createBlankCv } from "../../../utils/cvData.js";
 import { buildSectionFromTemplate } from "../../../utils/sections.js";
 
 export const createCvBuilderState = (initialCv) => ({
@@ -157,7 +157,7 @@ export function cvBuilderReducer(state, action) {
     case "reset-cv":
       return {
         ...state,
-        cv: createSeedCv(),
+        cv: applySeedDataToCv(state.cv || createBlankCv()),
       };
 
     default:

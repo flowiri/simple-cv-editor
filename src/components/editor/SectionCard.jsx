@@ -51,108 +51,118 @@ export function SectionCard({
         ref={(node) => registerEditorTarget(`section:${section.id}`, node)}
       >
         <div className="section-card-head">
-          <div className="section-meta">
-            <button
-              type="button"
-              className="secondary small icon-btn collapse-btn"
-              onClick={() => toggleSectionCollapsed(section.id)}
-              title={isCollapsed ? "Expand section" : "Collapse section"}
-            >
-              {isCollapsed ? "+" : "-"}
-            </button>
-            <div className="section-heading-group">
-              <div className="section-chip-row">
-                <span className="section-kind-chip">{sectionLabel}</span>
-                <span className="section-item-count">{itemCount}</span>
+          <div className="section-card-main">
+            <div className="section-card-topline">
+              <div className="section-meta">
+                <button
+                  type="button"
+                  className="secondary small icon-btn collapse-btn"
+                  onClick={() => toggleSectionCollapsed(section.id)}
+                  title={isCollapsed ? "Expand section" : "Collapse section"}
+                >
+                  {isCollapsed ? "+" : "-"}
+                </button>
+                <div className="section-heading-group">
+                  <div className="section-chip-row">
+                    <span className="section-kind-chip">{sectionLabel}</span>
+                    <span className="section-item-count">{itemCount}</span>
+                  </div>
+                  <input
+                    className="section-title-input"
+                    value={section.title}
+                    onChange={(event) =>
+                      updateSection(section.id, (current) => ({
+                        ...current,
+                        title: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
               </div>
-              <input
-                className="section-title-input"
-                value={section.title}
-                onChange={(event) =>
-                  updateSection(section.id, (current) => ({
-                    ...current,
-                    title: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            <select
-              className="section-template-select"
-              value={section.sectionTemplate || getSectionKind(section.title, section.type)}
-              onChange={(event) =>
-                updateSection(section.id, (current) => {
-                  const template = buildSectionFromTemplate(event.target.value);
-                  return normalizeForType(
-                    {
-                      ...template,
-                      id: current.id,
-                      title: current.title || template.title,
-                      visible: current.visible,
-                      items:
-                        current.sectionTemplate === event.target.value
-                          ? current.items
-                          : template.items,
-                      content:
-                        current.sectionTemplate === event.target.value
-                          ? current.content
-                          : template.content || "",
-                    },
-                    template.type
-                  );
-                })
-              }
-            >
-              {SECTION_TEMPLATES.map((template) => (
-                <option key={template.key} value={template.key}>
-                  {template.label}
-                </option>
-              ))}
-            </select>
-          </div>
 
-          <div className="row-controls">
-            <button
-              className="secondary small icon-btn"
-              onClick={() =>
-                updateSection(section.id, (current) => ({
-                  ...current,
-                  visible: current.visible === false,
-                }))
-              }
-              title={isHidden ? "Show in preview and PDF" : "Hide from preview and PDF"}
-            >
-              {isHidden ? <EyeClosedIcon /> : <EyeOpenIcon />}
-            </button>
-            <button
-              className="secondary small icon-btn"
-              disabled={sectionIndex === 0}
-              onClick={() => moveSection(section.id, -1)}
-              title="Move section up"
-            >
-              ^
-            </button>
-            <button
-              className="secondary small icon-btn"
-              disabled={sectionIndex === sectionCount - 1}
-              onClick={() => moveSection(section.id, 1)}
-              title="Move section down"
-            >
-              v
-            </button>
-            <button
-              className="secondary small icon-btn icon-btn-danger"
-              onClick={() =>
-                setCv((current) => ({
-                  ...current,
-                  sections: current.sections.filter(
-                    (candidate) => candidate.id !== section.id
-                  ),
-                }))
-              }
-              title="Delete section"
-            >
-              x
-            </button>
+              <div className="row-controls">
+                <button
+                  className="secondary small icon-btn"
+                  onClick={() =>
+                    updateSection(section.id, (current) => ({
+                      ...current,
+                      visible: current.visible === false,
+                    }))
+                  }
+                  title={isHidden ? "Show in preview and PDF" : "Hide from preview and PDF"}
+                >
+                  {isHidden ? <EyeClosedIcon /> : <EyeOpenIcon />}
+                </button>
+                <button
+                  className="secondary small icon-btn"
+                  disabled={sectionIndex === 0}
+                  onClick={() => moveSection(section.id, -1)}
+                  title="Move section up"
+                >
+                  ^
+                </button>
+                <button
+                  className="secondary small icon-btn"
+                  disabled={sectionIndex === sectionCount - 1}
+                  onClick={() => moveSection(section.id, 1)}
+                  title="Move section down"
+                >
+                  v
+                </button>
+                <button
+                  className="secondary small icon-btn icon-btn-danger"
+                  onClick={() =>
+                    setCv((current) => ({
+                      ...current,
+                      sections: current.sections.filter(
+                        (candidate) => candidate.id !== section.id
+                      ),
+                    }))
+                  }
+                  title="Delete section"
+                >
+                  x
+                </button>
+              </div>
+            </div>
+
+            <div className="section-card-settings">
+              <label className="section-select-field">
+                <span className="section-select-label">Section Type</span>
+                <select
+                  className="section-template-select"
+                  value={section.sectionTemplate || getSectionKind(section.title, section.type)}
+                  onChange={(event) =>
+                    updateSection(section.id, (current) => {
+                      const template = buildSectionFromTemplate(event.target.value);
+                      return normalizeForType(
+                        {
+                          ...template,
+                          id: current.id,
+                          title: current.title || template.title,
+                          visible: current.visible,
+                          items:
+                            current.sectionTemplate === event.target.value
+                              ? current.items
+                              : template.items,
+                          content:
+                            current.sectionTemplate === event.target.value
+                              ? current.content
+                              : template.content || "",
+                        },
+                        template.type
+                      );
+                    })
+                  }
+                >
+                  {SECTION_TEMPLATES.map((template) => (
+                    <option key={template.key} value={template.key}>
+                      {template.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </div>
         </div>
 
