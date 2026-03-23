@@ -38,23 +38,54 @@ export const createPublicationItem = (overrides = {}) =>
 export const defaultItemForType = (type) =>
   type === "bullet-list" ? createBulletItem() : createEntryItem();
 
-export const createSeedCv = () => ({
-  id: createId(),
-  name: "Phung Duc Thang CV",
-  basics: {
-    fullName: "Phung Duc Thang",
-    headline: "Penetration Tester",
-    email: "thangpd2305.work@gmail.com",
-    phone: "(+84) 366198046",
-    nationality: "Vietnam",
-    dateOfBirth: "31/10/2000",
-    gender: "Male",
-    website: "https://flowiri.hashnode.dev/",
-    linkedin: "https://www.linkedin.com/in/phung-duc-thang-34b9512b5/",
-    summary:
-      "Pursuing a professional penetration tester and security researcher career path in a healthy and positively pressing environment, so that I can continuously improve my technical skillset and expertise knowledge in securing critical applications and infrastructures of targeted customers.",
-  },
-  sections: [
+const normalizeKey = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+const buildSectionKey = (section) =>
+  normalizeKey(section?.sectionTemplate || section?.title || section?.type);
+
+const buildItemKey = (section, item) => {
+  const template = normalizeKey(section?.sectionTemplate || section?.type);
+
+  if (template === "achievements" || section?.type === "bullet-list") {
+    return normalizeKey(item?.text || item?.title || item?.description);
+  }
+
+  return normalizeKey(item?.title || item?.text || item?.description);
+};
+
+const mergeItemWithDefaults = (current, fallback) => ({
+  ...fallback,
+  ...current,
+  id: current?.id || fallback?.id || createId(),
+});
+
+const mergeSectionWithDefaults = (current, fallback) => {
+  const currentItems = Array.isArray(current?.items) ? current.items : [];
+  const fallbackItems = Array.isArray(fallback?.items) ? fallback.items : [];
+  const existingItemKeys = new Set(currentItems.map((item) => buildItemKey(current, item)).filter(Boolean));
+  const mergedItems = [
+    ...currentItems.map((item) => {
+      const matchedFallback = fallbackItems.find(
+        (candidate) => buildItemKey(current, candidate) === buildItemKey(current, item)
+      );
+      return matchedFallback ? mergeItemWithDefaults(item, matchedFallback) : item;
+    }),
+    ...fallbackItems.filter((item) => !existingItemKeys.has(buildItemKey(fallback, item))),
+  ];
+
+  return {
+    ...fallback,
+    ...current,
+    id: current?.id || fallback?.id || createId(),
+    items: mergedItems,
+  };
+};
+
+export const createDefaultSections = () => [
     {
       id: createId(),
       sectionTemplate: "professional-summary",
@@ -70,6 +101,13 @@ export const createSeedCv = () => ({
       type: "entry-list",
       title: "Education",
       items: [
+        createEntryItem({
+          title: "Vietnam National University - University of Engineering and Technology",
+          subtitle: "Major: Information Assurance",
+          meta: "2023 - Now",
+          description:
+            "Thesis: Vulnerability detection using adaptive federated learning\nSupervisor: PhD. Dai Tho Nguyen\n(expected to defend in 05/2026)",
+        }),
         createEntryItem({
           title: "FPT University",
           subtitle: "Major: Information Assurance",
@@ -87,6 +125,72 @@ export const createSeedCv = () => ({
         createEntryItem({ title: "OffSec Certified Professional (OSCP)", meta: "07/2024" }),
         createEntryItem({ title: "AWS Certified Solution Architect - Associate", meta: "02/2024" }),
         createEntryItem({ title: "OffSec Web Expert (OSWE)", meta: "04/2023" }),
+      ],
+    },
+    {
+      id: createId(),
+      sectionTemplate: "publications",
+      type: "entry-list",
+      title: "Publications",
+      items: [
+        createPublicationItem({
+          title: "Adaptive Federated Learning for Software Vulnerability Detection.",
+          authors: "Thang Phung Duc, and Dai Tho Nguyen",
+          venue:
+            "Proceedings of the 14th International Symposium on Information and Communication Technology (SoICT 2025), Nhatrang, Vietnam, 12-14, Springer Communications in Computer and Information Science (CCIS) Series",
+          meta: "December, 2025",
+        }),
+        createPublicationItem({
+          title:
+            "FU Covid-19 AI Agent built on Attention algorithm using a combination of Transformer, ALBERT model, and RASA framework",
+          authors:
+            "Ban Quy Tran, Thai Van Nguyen, Thang Duc Phung, Viet Tan Nguyen, Dat Duy Tran, and Son Tung Ngo",
+          venue:
+            "In Proceedings of the 10th International Conference on Software and Computer Applications (ICSCA '21). Association for Computing Machinery, New York, NY, USA, 22-31",
+          link: "https://doi.org/10.1145/3457784.3457788",
+          meta: "2021",
+        }),
+        createPublicationItem({
+          title:
+            "Design and Implementation a Secured and Distributed System using CBC, Socket, and RMI Technologies",
+          authors: "Thang Duc Phung, Thai Van Nguyen, and Ban Quy Tran",
+          venue:
+            "In Proceedings of the 10th International Conference on Software and Computer Applications (ICSCA '21). Association for Computing Machinery, New York, NY, USA, 238-243",
+          link: "https://doi.org/10.1145/3457784.3457830",
+          meta: "2021",
+        }),
+      ],
+    },
+    {
+      id: createId(),
+      sectionTemplate: "projects",
+      type: "entry-list",
+      title: "Outstanding Projects",
+      items: [
+        createEntryItem({
+          title: "FPT Internal BugBounty",
+          subtitle: "Bug Hunter",
+          meta: "2023",
+          tags: "",
+          description:
+            "Performed bug hunting on internet-facing web and application assets of FPT Corporation, uncovering critical vulnerabilities including SQL Injection and Privilege Escalation",
+        }),
+        createEntryItem({
+          title: "Website violympic.vn",
+          subtitle: "Team Leader, Security Engineer",
+          meta: "2023",
+          tags: "",
+          description:
+            "Discovered critical business logic vulnerabilities that enable online participants (students) to manipulate the exam system and achieve inflated scores (potentially 100) without actual learning",
+        }),
+        createEntryItem({
+          title: "TPBank",
+          subtitle: "Penetration Tester",
+          meta: "2021",
+          tags: "",
+          description:
+            "Conducted security assessments across multiple banking web applications (both internal and external), identifying critical vulnerabilities such as SQL Injection and Command Injection",
+        }),
       ],
     },
     {
@@ -142,5 +246,38 @@ export const createSeedCv = () => ({
         }),
       ],
     },
-  ],
+  ];
+
+export const mergeWithDefaultSections = (sections = []) => {
+  const defaults = createDefaultSections();
+  const existing = Array.isArray(sections) ? sections : [];
+  const existingKeys = new Set(existing.map(buildSectionKey).filter(Boolean));
+
+  return [
+    ...existing.map((section) => {
+      const matchedDefault = defaults.find(
+        (candidate) => buildSectionKey(candidate) === buildSectionKey(section)
+      );
+      return matchedDefault ? mergeSectionWithDefaults(section, matchedDefault) : section;
+    }),
+    ...defaults.filter((section) => !existingKeys.has(buildSectionKey(section))),
+  ];
+};
+
+export const createSeedCv = () => ({
+  id: createId(),
+  name: "Phung Duc Thang CV",
+  basics: {
+    fullName: "Phung Duc Thang",
+    headline: "Security Engineer",
+    email: "thangpd2305.work@gmail.com",
+    phone: "(+84) 366198046",
+    nationality: "Vietnam",
+    dateOfBirth: "31/10/2000",
+    website: "https://flowiri.hashnode.dev/",
+    linkedin: "https://www.linkedin.com/in/phung-duc-thang-34b9512b5/",
+    summary:
+      "Pursuing a professional penetration tester and security researcher career path in a healthy and positively pressing environment, so that I can continuously improve my technical skillset and expertise knowledge in securing critical applications and infrastructures of targeted customers.",
+  },
+  sections: createDefaultSections(),
 });

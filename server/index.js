@@ -56,13 +56,15 @@ app.post("/api/cvs/export-pdf", async (request, response) => {
 
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
-    const pdfBuffer = await page.pdf({
+    const pdfBytes = await page.pdf({
       format: "A4",
       printBackground: true,
-      margin: { top: "0", right: "0", bottom: "0", left: "0" },
+      margin: { top: "15mm", right: "16mm", bottom: "16mm", left: "16mm" },
     });
+    const pdfBuffer = Buffer.from(pdfBytes);
 
     response.setHeader("Content-Type", "application/pdf");
+    response.setHeader("Content-Length", String(pdfBuffer.length));
     response.setHeader(
       "Content-Disposition",
       `attachment; filename="${(cv.name || "cv").replace(/"/g, "")}.pdf"`

@@ -1,5 +1,5 @@
 import { STORAGE_KEY } from "../constants/index.js";
-import { createSeedCv } from "./cvData.js";
+import { createSeedCv, mergeWithDefaultSections } from "./cvData.js";
 import { bulletsToContent, parseWorkDescription } from "./parsers.js";
 import {
   normalizeSection,
@@ -27,7 +27,8 @@ export function loadInitialState() {
         ...(parsed.basics && typeof parsed.basics === "object" ? parsed.basics : {}),
       },
       sections: Array.isArray(parsed.sections)
-        ? parsed.sections.map((section) => {
+        ? mergeWithDefaultSections(
+          parsed.sections.map((section) => {
             const normalized = normalizeSection(section);
             const kind = getSectionKind(normalized.title, normalized.type);
 
@@ -68,6 +69,7 @@ export function loadInitialState() {
 
             return normalized;
           })
+        )
         : seed.sections,
     };
   } catch {

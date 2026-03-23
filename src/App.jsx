@@ -5,10 +5,12 @@ import { SectionsPanel } from "./components/editor/SectionsPanel.jsx";
 import { ContactRow } from "./components/preview/ContactRow.jsx";
 import { PreviewSection } from "./components/preview/PreviewSection.jsx";
 import { renderFormattedParagraph } from "./utils/formatting.jsx";
+import { getSectionKind } from "./utils/sections.js";
 
 const A4_PAGE_HEIGHT_MM = 297;
 const A4_PAGE_PADDING_TOP_MM = 15;
 const A4_PAGE_PADDING_BOTTOM_MM = 16;
+const A4_PAGE_BOTTOM_BUFFER_MM = 12;
 
 export default function App() {
   const [previewMode, setPreviewMode] = useState("print");
@@ -47,6 +49,7 @@ export default function App() {
     const blocks = [
       {
         id: "header",
+        spacingBefore: 0,
         render: () => (
           <header className="cv-header">
             <div>
@@ -69,6 +72,7 @@ export default function App() {
     if (cv.basics.summary) {
       blocks.push({
         id: "summary",
+        spacingBefore: 0,
         render: () => (
           <section
             className="cv-section preview-clickable"
@@ -84,15 +88,54 @@ export default function App() {
     (cv.sections || [])
       .filter((section) => section.visible !== false)
       .forEach((section) => {
-        blocks.push({
-          id: section.id,
-          render: () => (
-            <PreviewSection
-              section={section}
-              onSectionClick={() => focusEditorTarget(`section:${section.id}`)}
-              onItemClick={(itemId) => focusEditorTarget(`item:${itemId}`)}
-            />
-          ),
+        const sectionKind = getSectionKind(section.title, section.type, section.sectionTemplate);
+        const items = Array.isArray(section.items) ? section.items.filter(Boolean) : [];
+        const isSplittableListSection =
+          items.length > 0 &&
+          (
+            section.type === "entry-list" ||
+            sectionKind === "achievements"
+          );
+
+        if (!isSplittableListSection) {
+          blocks.push({
+            id: section.id,
+            spacingBefore: 0,
+            render: () => (
+              <PreviewSection
+                section={section}
+                onSectionClick={() => focusEditorTarget(`section:${section.id}`)}
+                onItemClick={(itemId) => focusEditorTarget(`item:${itemId}`)}
+              />
+            ),
+          });
+          return;
+        }
+
+        items.forEach((item, index) => {
+          const spacingBefore = sectionKind === "work-experience"
+            ? 0.5
+            : sectionKind === "achievements" || sectionKind === "certificates"
+              ? 0.45
+              : 0.7;
+          const keepBottomClearance = sectionKind === "publications"
+            ? A4_PAGE_BOTTOM_BUFFER_MM
+            : 0;
+
+          blocks.push({
+            id: `${section.id}:${item.id}`,
+            spacingBefore: index === 0 ? 0 : spacingBefore,
+            keepBottomClearance,
+            render: () => (
+              <PreviewSection
+                section={section}
+                itemsOverride={[item]}
+                showTitle={index === 0}
+                onSectionClick={() => focusEditorTarget(`section:${section.id}`)}
+                onItemClick={(itemId) => focusEditorTarget(`item:${itemId}`)}
+              />
+            ),
+          });
         });
       });
 
@@ -124,15 +167,25 @@ export default function App() {
       previewBlocks.forEach((block, index) => {
         const node = measureRefs.current[index];
         const blockHeight = node?.offsetHeight || 0;
+        const blockSpacing = currentPage.length > 0 ? (block.spacingBefore || 0) * 16 : 0;
+        const keepBottomClearancePx = ((block.keepBottomClearance || 0) / 178) * firstBlock.offsetWidth;
+        const nextHeight = currentHeight + blockSpacing + blockHeight;
+        const shouldPushToNextPage =
+          currentPage.length > 0 &&
+          nextHeight <= pageContentHeight &&
+          pageContentHeight - nextHeight < keepBottomClearancePx;
 
-        if (currentPage.length > 0 && currentHeight + blockHeight > pageContentHeight) {
+        if (
+          currentPage.length > 0 &&
+          (nextHeight > pageContentHeight || shouldPushToNextPage)
+        ) {
           nextPages.push(currentPage);
           currentPage = [];
           currentHeight = 0;
         }
 
         currentPage.push(block);
-        currentHeight += blockHeight;
+        currentHeight += (currentPage.length > 1 ? (block.spacingBefore || 0) * 16 : 0) + blockHeight;
       });
 
       if (currentPage.length > 0) {
@@ -240,7 +293,11 @@ export default function App() {
           {renderedPages.map((pageBlocks, pageIndex) => (
             <article className="cv-page" key={`page-${pageIndex}`}>
               {pageBlocks.map((block) => (
-                <div key={block.id} className="cv-page-block">
+                <div
+                  key={block.id}
+                  className="cv-page-block"
+                  style={{ marginTop: block.spacingBefore && pageBlocks[0] !== block ? `${block.spacingBefore}rem` : 0 }}
+                >
                   {block.render()}
                 </div>
               ))}

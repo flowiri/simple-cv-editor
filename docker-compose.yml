@@ -22,7 +22,7 @@ services:
       DATABASE_URL: postgresql://cv_user:cv_password@db:5432/cv_builder
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
     ports:
-      - "3000:3000"
+      - "8000:3000"
 
 volumes:
   postgres_data:

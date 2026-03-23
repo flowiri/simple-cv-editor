@@ -777,7 +777,19 @@ button:disabled {
 .cv-section p,
 .cv-section li,
 .entry-subtitle,
-.entry-meta {
+.entry-meta,
+.entry-description,
+.education-copy,
+.publication-authors,
+.publication-venue,
+.publication-link,
+.publication-notes,
+.achievement-copy,
+.certificate-copy,
+.work-detail-line,
+.work-detail-label,
+.responsibility-list li,
+.responsibility-copy {
   font-size: 0.77rem;
   line-height: 1.5;
 }
@@ -840,6 +852,10 @@ button:disabled {
   text-align: center;
 }
 
+.achievement-dot::before {
+  content: "\2022";
+}
+
 .achievement-copy {
   margin: 0;
 }
@@ -885,14 +901,12 @@ button:disabled {
 
 .publication-authors {
   color: #102a43;
-  font-size: 0.75rem;
   line-height: 1.45;
 }
 
 .publication-venue {
   color: #486581;
   font-style: italic;
-  font-size: 0.74rem;
   line-height: 1.45;
 }
 
@@ -900,12 +914,11 @@ button:disabled {
   color: var(--accent-2);
   text-decoration: none;
   word-break: break-all;
-  font-size: 0.71rem;
+  font-size: 0.77rem;
 }
 
 .publication-notes {
   color: #243b53;
-  font-size: 0.74rem;
   line-height: 1.45;
 }
 
@@ -939,6 +952,9 @@ button:disabled {
 
 .certificate-copy {
   margin: 0;
+  font-size: 0.77rem;
+  line-height: 1.5;
+  font-weight: 700;
 }
 
 .cv-entry-work {
@@ -976,7 +992,6 @@ button:disabled {
 .work-detail-label {
   color: var(--accent-2);
   font-weight: 700;
-  font-size: 0.76rem;
 }
 
 .responsibility-list {
@@ -1040,8 +1055,6 @@ button:disabled {
 .certificate-copy {
   color: #102a43;
   letter-spacing: 0.01em;
-  font-size: 0.9rem;
-  font-weight: 700;
 }
 
 .publication-card .entry-topline h3 {
@@ -1066,7 +1079,6 @@ button:disabled {
 .education-card .entry-subtitle,
 .certificate-row .entry-subtitle {
   color: #486581;
-  font-size: 0.75rem;
 }
 
 .education-card .entry-subtitle,
@@ -1272,9 +1284,9 @@ button:disabled {
     display: none;
   }
 
-  /* Prevent entries from being cut across pages */
   .cv-section {
-    break-inside: avoid;
+    break-inside: auto;
+    page-break-inside: auto;
   }
 
   .cv-entry,

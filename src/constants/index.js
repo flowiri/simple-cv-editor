@@ -17,7 +17,6 @@ export const basicsFields = [
   ["phone", "Phone"],
   ["nationality", "Nationality"],
   ["dateOfBirth", "Date of birth"],
-  ["gender", "Gender"],
   ["website", "Website"],
   ["linkedin", "LinkedIn"],
 ];
