@@ -68,6 +68,17 @@ function BackIcon() {
   );
 }
 
+function DesignIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 7h12v2H6zm2 4h8v2H8zm-2 4h12v2H6z" fill="currentColor" />
+      <circle cx="9" cy="8" r="2" fill="currentColor" />
+      <circle cx="15" cy="12" r="2" fill="currentColor" />
+      <circle cx="11" cy="16" r="2" fill="currentColor" />
+    </svg>
+  );
+}
+
 export default function App() {
   const [previewMode, setPreviewMode] = useState("print");
   const [workspaceScreen, setWorkspaceScreen] = useState(() => {
@@ -80,6 +91,7 @@ export default function App() {
   const [isEditorScrolled, setIsEditorScrolled] = useState(false);
   const [isEditorTopbarVisible, setIsEditorTopbarVisible] = useState(true);
   const [isEditingCvName, setIsEditingCvName] = useState(false);
+  const [isDesignDrawerOpen, setIsDesignDrawerOpen] = useState(false);
   const [draftCvName, setDraftCvName] = useState("");
   const [templatePreviewId, setTemplatePreviewId] = useState("");
   const [templatePreview, setTemplatePreview] = useState(null);
@@ -419,6 +431,28 @@ export default function App() {
       setIsEditorTopbarVisible(true);
     }
   }, [workspaceMenuOpen, isEditingCvName]);
+
+  useEffect(() => {
+    if (workspaceScreen !== "editor") {
+      setIsDesignDrawerOpen(false);
+    }
+  }, [workspaceScreen]);
+
+  useEffect(() => {
+    if (!isDesignDrawerOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsDesignDrawerOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isDesignDrawerOpen]);
 
   useEffect(() => {
     if (workspaceScreen === "editor" || workspaceScreen === "viewer" || workspaceScreen === "template-viewer") {
@@ -893,16 +927,6 @@ export default function App() {
               onFocusCapture={() => setIsEditorTopbarVisible(true)}
             >
               <div className="editor-content">
-                <ThemePanel
-                  cvName={displayCvName}
-                  theme={cv.theme}
-                  templateCount={templateList.length}
-                  templateSaveLabel={templateSaveLabel}
-                  onSelectPreset={setThemePreset}
-                  onUpdateThemeColor={updateThemeColor}
-                  onSaveTemplate={saveCurrentCvAsTemplate}
-                />
-
                 <BasicsPanel
                   basics={cv.basics}
                   activeInspectorTarget={activeInspectorTarget}
@@ -930,6 +954,32 @@ export default function App() {
                 />
               </div>
             </main>
+
+            <div className={`design-drawer-shell ${isDesignDrawerOpen ? "is-open" : ""}`}>
+              <button
+                type="button"
+                className={`secondary design-drawer-toggle ${isDesignDrawerOpen ? "is-open" : ""}`}
+                aria-label={isDesignDrawerOpen ? "Close theme and template sidebar" : "Open theme and template sidebar"}
+                aria-expanded={isDesignDrawerOpen}
+                onClick={() => setIsDesignDrawerOpen((current) => !current)}
+              >
+                <span className="design-drawer-toggle-icon" aria-hidden="true">
+                  <DesignIcon />
+                </span>
+              </button>
+
+              <aside className="design-drawer" aria-label="Theme and templates">
+                <ThemePanel
+                  cvName={displayCvName}
+                  theme={cv.theme}
+                  templateCount={templateList.length}
+                  templateSaveLabel={templateSaveLabel}
+                  onSelectPreset={setThemePreset}
+                  onUpdateThemeColor={updateThemeColor}
+                  onSaveTemplate={saveCurrentCvAsTemplate}
+                />
+              </aside>
+            </div>
           </aside>
         ) : null}
 

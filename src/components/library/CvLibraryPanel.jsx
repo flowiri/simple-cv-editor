@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { resolveCvTheme } from "../../utils/cvThemes.js";
+import { LockClosedIcon } from "../icons/LockClosedIcon.jsx";
+import { LockOpenIcon } from "../icons/LockOpenIcon.jsx";
 
 function PlusIcon() {
   return (
@@ -304,13 +306,13 @@ export function CvLibraryPanel({
                     <div className="cv-library-item-actions" onClick={(event) => event.stopPropagation()}>
                       <button
                         type="button"
-                        className="secondary small library-visibility-button"
+                        className="icon-btn secondary library-visibility-button"
                         title={template.isPublic ? "Make template private" : "Make template public"}
                         aria-label={template.isPublic ? `Make ${template.name || "template"} private` : `Make ${template.name || "template"} public`}
                         onClick={() => onSetTemplateVisibility(template.id, !template.isPublic)}
                         disabled={isBusy}
                       >
-                        {template.isPublic ? "Public" : "Private"}
+                        {template.isPublic ? <LockOpenIcon /> : <LockClosedIcon />}
                       </button>
                       <button
                         type="button"

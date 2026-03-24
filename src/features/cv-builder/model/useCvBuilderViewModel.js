@@ -662,18 +662,23 @@ export function useCvBuilderViewModel() {
     return true;
   };
 
-  const handleSaveCurrentCvAsTemplate = async (templateName, templateId = "") => {
+  const handleSaveCurrentCvAsTemplate = async (templateName, isPublic = false, templateId = "") => {
     if (!session?.token) return false;
 
     setTemplateSaveLabel(templateId ? "Updating..." : "Saving...");
 
     try {
-      const savedTemplate = await saveTemplate(
+      let savedTemplate = await saveTemplate(
         session.token,
         templateName,
         state.cv,
         templateId
       );
+
+      if (savedTemplate?.id && savedTemplate.isPublic !== Boolean(isPublic)) {
+        savedTemplate = await setTemplateVisibility(session.token, savedTemplate.id, isPublic);
+      }
+
       setTemplateList((current) => mergeTemplateIntoList(current, savedTemplate));
       setTemplateSaveLabel(templateId ? "Template updated" : "Template saved");
       await refreshTemplateCollections(session.token);
