@@ -4,6 +4,7 @@ import { renderFormattedInline, renderFormattedParagraph } from "../../utils/for
 
 export function PreviewSection({
   section,
+  copy,
   onSectionClick,
   onItemClick,
   itemsOverride,
@@ -137,13 +138,15 @@ export function PreviewSection({
         <div className="work-detail-grid">
           {customers ? (
             <p className="work-detail-line">
-              <span>Customers</span>
+              <span>{copy?.work?.customers || "Customers"}</span>
               {renderFormattedInline(customers, `${item.id}-customers`)}
             </p>
           ) : null}
           {responsibilities ? (
             <div className="work-detail-block">
-              <div className="work-detail-label">Responsibilities</div>
+              <div className="work-detail-label">
+                {copy?.work?.responsibilities || "Responsibilities"}
+              </div>
               {bullets.length > 1 || /^\s*[-*]\s*/.test(String(responsibilities || "")) ? (
                 <ul className="responsibility-list">
                   {bullets.map((bullet, bulletIndex) => (

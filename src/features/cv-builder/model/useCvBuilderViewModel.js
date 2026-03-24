@@ -756,6 +756,7 @@ export function useCvBuilderViewModel() {
           }),
         }),
       }),
+    setLanguage: (value) => dispatch({ type: "set-language", value }),
     updateBasics: (key, value) => dispatch({ type: "update-basics", key, value }),
     updateSection: (sectionId, updater) =>
       dispatch({ type: "update-section", sectionId, updater }),

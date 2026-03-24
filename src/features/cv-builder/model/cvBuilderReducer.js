@@ -1,8 +1,13 @@
-import { applySeedDataToCv, createBlankCv } from "../../../utils/cvData.js";
+import {
+  applySeedDataToCv,
+  createBlankCv,
+  switchCvLanguage,
+  syncActiveCvLocale,
+} from "../../../utils/cvData.js";
 import { buildSectionFromTemplate } from "../../../utils/sections.js";
 
 export const createCvBuilderState = (initialCv) => ({
-  cv: initialCv,
+  cv: syncActiveCvLocale(initialCv),
   saveLabel: "Save",
   exportLabel: "Export PDF",
   activeInspectorTarget: "",
@@ -11,55 +16,57 @@ export const createCvBuilderState = (initialCv) => ({
   insertMenuIndex: null,
 });
 
+function withSyncedCv(state, nextCv, extra = {}) {
+  return {
+    ...state,
+    ...extra,
+    cv: syncActiveCvLocale(nextCv),
+  };
+}
+
 export function cvBuilderReducer(state, action) {
   switch (action.type) {
     case "set-cv": {
       const nextCv = typeof action.updater === "function"
         ? action.updater(state.cv)
         : action.value;
-      return { ...state, cv: nextCv };
+      return withSyncedCv(state, nextCv);
     }
 
     case "update-basics":
-      return {
-        ...state,
-        cv: {
-          ...state.cv,
-          basics: {
-            ...state.cv.basics,
-            [action.key]: action.value,
-          },
+      return withSyncedCv(state, {
+        ...state.cv,
+        basics: {
+          ...state.cv.basics,
+          [action.key]: action.value,
         },
-      };
+      });
+
+    case "set-language":
+      return withSyncedCv(state, switchCvLanguage(state.cv, action.value));
 
     case "update-section":
-      return {
-        ...state,
-        cv: {
-          ...state.cv,
-          sections: state.cv.sections.map((section) =>
-            section.id === action.sectionId ? action.updater(section) : section
-          ),
-        },
-      };
+      return withSyncedCv(state, {
+        ...state.cv,
+        sections: state.cv.sections.map((section) =>
+          section.id === action.sectionId ? action.updater(section) : section
+        ),
+      });
 
     case "update-item":
-      return {
-        ...state,
-        cv: {
-          ...state.cv,
-          sections: state.cv.sections.map((section) =>
-            section.id === action.sectionId
-              ? {
-                  ...section,
-                  items: (section.items || []).map((item) =>
-                    item.id === action.itemId ? action.updater(item) : item
-                  ),
-                }
-              : section
-          ),
-        },
-      };
+      return withSyncedCv(state, {
+        ...state.cv,
+        sections: state.cv.sections.map((section) =>
+          section.id === action.sectionId
+            ? {
+                ...section,
+                items: (section.items || []).map((item) =>
+                  item.id === action.itemId ? action.updater(item) : item
+                ),
+              }
+            : section
+        ),
+      });
 
     case "move-section": {
       const index = state.cv.sections.findIndex((section) => section.id === action.sectionId);
@@ -70,40 +77,34 @@ export function cvBuilderReducer(state, action) {
       const [section] = sections.splice(index, 1);
       sections.splice(target, 0, section);
 
-      return {
-        ...state,
-        cv: { ...state.cv, sections },
-      };
+      return withSyncedCv(state, { ...state.cv, sections });
     }
 
     case "move-item":
-      return {
-        ...state,
-        cv: {
-          ...state.cv,
-          sections: state.cv.sections.map((section) => {
-            if (section.id !== action.sectionId) return section;
+      return withSyncedCv(state, {
+        ...state.cv,
+        sections: state.cv.sections.map((section) => {
+          if (section.id !== action.sectionId) return section;
 
-            const index = (section.items || []).findIndex((item) => item.id === action.itemId);
-            const target = index + action.delta;
-            if (index < 0 || target < 0 || target >= section.items.length) return section;
+          const index = (section.items || []).findIndex((item) => item.id === action.itemId);
+          const target = index + action.delta;
+          if (index < 0 || target < 0 || target >= section.items.length) return section;
 
-            const items = [...section.items];
-            const [item] = items.splice(index, 1);
-            items.splice(target, 0, item);
-            return { ...section, items };
-          }),
-        },
-      };
+          const items = [...section.items];
+          const [item] = items.splice(index, 1);
+          items.splice(target, 0, item);
+          return { ...section, items };
+        }),
+      });
 
     case "insert-section-at": {
       const sections = [...(state.cv.sections || [])];
-      sections.splice(action.index, 0, buildSectionFromTemplate(action.templateKey));
-      return {
-        ...state,
-        cv: { ...state.cv, sections },
-        insertMenuIndex: null,
-      };
+      sections.splice(action.index, 0, buildSectionFromTemplate(action.templateKey, state.cv.language));
+      return withSyncedCv(
+        state,
+        { ...state.cv, sections },
+        { insertMenuIndex: null }
+      );
     }
 
     case "set-save-label":
@@ -155,10 +156,7 @@ export function cvBuilderReducer(state, action) {
       return { ...state, insertMenuIndex: action.value };
 
     case "reset-cv":
-      return {
-        ...state,
-        cv: applySeedDataToCv(state.cv || createBlankCv()),
-      };
+      return withSyncedCv(state, applySeedDataToCv(state.cv || createBlankCv()));
 
     default:
       return state;

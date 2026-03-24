@@ -1,4 +1,5 @@
 import { createId, createEntryItem, createBulletItem, createPublicationItem, defaultItemForType } from "./cvData.js";
+import { DEFAULT_CV_LANGUAGE, getSectionTemplateDefinition } from "./cvLanguage.js";
 import { extractAchievementParts, parsePublicationCitation } from "./parsers.js";
 
 export { defaultItemForType };
@@ -7,9 +8,18 @@ export const getSectionKind = (title, type, sectionTemplate = "") => {
   const explicit = String(sectionTemplate || "").trim().toLowerCase();
   if (explicit) return explicit;
 
-  const normalized = String(title || "").trim().toLowerCase();
+  const normalized = String(title || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
 
-  if (type === "bullet-list" && normalized === "professional summary") return "professional-summary";
+  if (
+    type === "bullet-list"
+    && (normalized === "professional summary" || normalized === "tom tat chuyen mon")
+  ) {
+    return "professional-summary";
+  }
 
   if (
     type === "entry-list" &&
@@ -17,7 +27,8 @@ export const getSectionKind = (title, type, sectionTemplate = "") => {
       normalized.includes("publications") ||
       normalized.includes("publication") ||
       normalized.includes("research") ||
-      normalized.includes("papers"))
+      normalized.includes("papers") ||
+      normalized.includes("cong trinh cong bo"))
   ) {
     return "publications";
   }
@@ -26,21 +37,26 @@ export const getSectionKind = (title, type, sectionTemplate = "") => {
     type === "entry-list" &&
     (normalized.includes("work experience") ||
       normalized.includes("experience") ||
-      normalized.includes("employment"))
+      normalized.includes("employment") ||
+      normalized.includes("kinh nghiem"))
   ) {
     return "work-experience";
   }
 
   if (
     type === "entry-list" &&
-    (normalized === "education" || normalized.includes("academic background"))
+    (normalized === "education" ||
+      normalized.includes("academic background") ||
+      normalized.includes("hoc van"))
   ) {
     return "education";
   }
 
   if (
     type === "entry-list" &&
-    (normalized.includes("certificate") || normalized.includes("certification"))
+    (normalized.includes("certificate") ||
+      normalized.includes("certification") ||
+      normalized.includes("chung chi"))
   ) {
     return "certificates";
   }
@@ -49,7 +65,8 @@ export const getSectionKind = (title, type, sectionTemplate = "") => {
     type === "bullet-list" &&
     (normalized.includes("achievement") ||
       normalized.includes("award") ||
-      normalized.includes("honor"))
+      normalized.includes("honor") ||
+      normalized.includes("thanh tich"))
   ) {
     return "achievements";
   }
@@ -57,13 +74,15 @@ export const getSectionKind = (title, type, sectionTemplate = "") => {
   return "default";
 };
 
-export const buildSectionFromTemplate = (templateKey) => {
+export const buildSectionFromTemplate = (templateKey, language = DEFAULT_CV_LANGUAGE) => {
+  const copy = getSectionTemplateDefinition(templateKey, language);
+
   if (templateKey === "publications") {
     return {
       id: createId(),
       sectionTemplate: "publications",
       type: "entry-list",
-      title: "Academic Publications",
+      title: copy.title,
       items: [createPublicationItem()],
     };
   }
@@ -73,7 +92,7 @@ export const buildSectionFromTemplate = (templateKey) => {
       id: createId(),
       sectionTemplate: "certificates",
       type: "entry-list",
-      title: "Certifications",
+      title: copy.title,
       items: [
         createEntryItem({
           title: "Certification name",
@@ -88,7 +107,7 @@ export const buildSectionFromTemplate = (templateKey) => {
       id: createId(),
       sectionTemplate: "achievements",
       type: "bullet-list",
-      title: "Achievements",
+      title: copy.title,
       items: [{ ...createBulletItem("New achievement"), meta: "MM/YYYY" }],
     };
   }
@@ -98,7 +117,7 @@ export const buildSectionFromTemplate = (templateKey) => {
       id: createId(),
       sectionTemplate: "work-experience",
       type: "entry-list",
-      title: "Work Experience",
+      title: copy.title,
       items: [
         createEntryItem({
           title: "Company name",
@@ -118,7 +137,7 @@ export const buildSectionFromTemplate = (templateKey) => {
       id: createId(),
       sectionTemplate: "projects",
       type: "entry-list",
-      title: "Projects",
+      title: copy.title,
       items: [
         createEntryItem({
           title: "Project name",
@@ -137,7 +156,7 @@ export const buildSectionFromTemplate = (templateKey) => {
       id: createId(),
       sectionTemplate: "custom",
       type: "paragraph",
-      title: "Custom",
+      title: copy.title,
       content: "",
       items: [],
     };
@@ -147,7 +166,7 @@ export const buildSectionFromTemplate = (templateKey) => {
     id: createId(),
     sectionTemplate: "custom-section",
     type: "entry-list",
-    title: "Custom Section",
+    title: copy.title,
     items: [createEntryItem()],
   };
 };

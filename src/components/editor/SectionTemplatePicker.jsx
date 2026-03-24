@@ -1,9 +1,11 @@
-import { SECTION_TEMPLATES } from "../../constants/index.js";
+import { getSectionTemplates } from "../../constants/index.js";
 
-export function SectionTemplatePicker({ onSelect }) {
+export function SectionTemplatePicker({ language, onSelect }) {
+  const sectionTemplates = getSectionTemplates(language);
+
   return (
     <div className="section-template-picker">
-      {SECTION_TEMPLATES.map((template) => (
+      {sectionTemplates.map((template) => (
         <button
           key={template.key}
           type="button"

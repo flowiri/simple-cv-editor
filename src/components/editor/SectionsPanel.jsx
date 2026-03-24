@@ -3,6 +3,7 @@ import { SectionTemplatePicker } from "./SectionTemplatePicker.jsx";
 import { SectionCard } from "./SectionCard.jsx";
 
 export function SectionsPanel({
+  language,
   sections,
   sectionCount,
   activeInspectorTarget,
@@ -41,13 +42,17 @@ export function SectionsPanel({
           onClick={() => setInsertMenuIndex((current) => (current === 0 ? null : 0))}
         />
         {insertMenuIndex === 0 ? (
-          <SectionTemplatePicker onSelect={(templateKey) => insertSectionAt(0, templateKey)} />
+          <SectionTemplatePicker
+            language={language}
+            onSelect={(templateKey) => insertSectionAt(0, templateKey)}
+          />
         ) : null}
 
         {sections.map((section, sectionIndex) => (
           <SectionCard
             key={section.id}
             section={section}
+            language={language}
             sectionIndex={sectionIndex}
             sectionCount={sectionCount}
             activeInspectorTarget={activeInspectorTarget}

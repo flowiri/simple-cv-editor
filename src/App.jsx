@@ -9,7 +9,9 @@ import { CvLibraryPanel } from "./components/library/CvLibraryPanel.jsx";
 import { PublicTemplatePanel } from "./components/library/PublicTemplatePanel.jsx";
 import { ContactRow } from "./components/preview/ContactRow.jsx";
 import { PreviewSection } from "./components/preview/PreviewSection.jsx";
+import { SUPPORTED_CV_LANGUAGES } from "./constants/index.js";
 import { createBlankCv } from "./utils/cvData.js";
+import { getCvLanguageCopy } from "./utils/cvLanguage.js";
 import { getCvThemeStyle } from "./utils/cvThemes.js";
 import { renderFormattedParagraph } from "./utils/formatting.jsx";
 import { getSectionKind } from "./utils/sections.js";
@@ -158,6 +160,7 @@ export default function App() {
     templateSaveLabel,
     passwordLabel,
     passwordError,
+    setLanguage,
     setThemePreset,
     updateThemeColor,
   } = useCvBuilderViewModel();
@@ -166,6 +169,10 @@ export default function App() {
   const activeDocument = isTemplateViewerScreen
     ? (templatePreview?.document || blankPreviewCv)
     : cv;
+  const languageCopy = useMemo(
+    () => getCvLanguageCopy(activeDocument.language),
+    [activeDocument.language]
+  );
 
   const previewBlocks = useMemo(() => {
     const isEditorWorkspace = workspaceScreen === "editor";
@@ -180,12 +187,13 @@ export default function App() {
               <p className="cv-headline">{activeDocument.basics.headline}</p>
             </div>
             <ul className="contact-list">
-              <ContactRow label="Email" value={activeDocument.basics.email} />
-              <ContactRow label="Phone" value={activeDocument.basics.phone} />
-              <ContactRow label="Website" value={activeDocument.basics.website} link />
-              <ContactRow label="LinkedIn" value={activeDocument.basics.linkedin} link />
-              <ContactRow label="Nationality" value={activeDocument.basics.nationality} />
-              <ContactRow label="Date of Birth" value={activeDocument.basics.dateOfBirth} />
+              <ContactRow label={languageCopy.contact.email} value={activeDocument.basics.email} />
+              <ContactRow label={languageCopy.contact.phone} value={activeDocument.basics.phone} />
+              <ContactRow label={languageCopy.contact.website} value={activeDocument.basics.website} link />
+              <ContactRow label={languageCopy.contact.linkedin} value={activeDocument.basics.linkedin} link />
+              <ContactRow label={languageCopy.contact.gender} value={activeDocument.basics.gender} />
+              <ContactRow label={languageCopy.contact.nationality} value={activeDocument.basics.nationality} />
+              <ContactRow label={languageCopy.contact.dateOfBirth} value={activeDocument.basics.dateOfBirth} />
             </ul>
           </header>
         ),
@@ -201,7 +209,7 @@ export default function App() {
             className={`cv-section ${isEditorWorkspace ? "preview-clickable" : ""}`}
             onClick={isEditorWorkspace ? () => focusEditorTarget("basics-summary") : undefined}
           >
-            <h2>Objective</h2>
+            <h2>{languageCopy.objective}</h2>
             <p>{renderFormattedParagraph(activeDocument.basics.summary, "basics-summary-para")}</p>
           </section>
         ),
@@ -224,6 +232,7 @@ export default function App() {
             render: () => (
               <PreviewSection
                 section={section}
+                copy={languageCopy}
                 onSectionClick={isEditorWorkspace ? () => focusEditorTarget(`section:${section.id}`) : undefined}
                 onItemClick={isEditorWorkspace ? (itemId) => focusEditorTarget(`item:${itemId}`) : undefined}
               />
@@ -249,6 +258,7 @@ export default function App() {
             render: () => (
               <PreviewSection
                 section={section}
+                copy={languageCopy}
                 itemsOverride={[item]}
                 showTitle={index === 0}
                 onSectionClick={isEditorWorkspace ? () => focusEditorTarget(`section:${section.id}`) : undefined}
@@ -260,7 +270,7 @@ export default function App() {
       });
 
     return blocks;
-  }, [activeDocument, focusEditorTarget, workspaceScreen]);
+  }, [activeDocument, focusEditorTarget, languageCopy, workspaceScreen]);
 
   useEffect(() => {
     measureRefs.current = measureRefs.current.slice(0, previewBlocks.length);
@@ -855,6 +865,26 @@ export default function App() {
               </div>
             ) : null}
 
+            {!isTemplateViewerScreen ? (
+              <div className="toolbar-group toolbar-group-language">
+                <label className="toolbar-select-field" htmlFor="cv-language-select">
+                  <span className="topbar-status-label">Language</span>
+                  <select
+                    id="cv-language-select"
+                    className="toolbar-select"
+                    value={cv.language || "en"}
+                    onChange={(event) => setLanguage(event.target.value)}
+                  >
+                    {SUPPORTED_CV_LANGUAGES.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+
             <div className="toolbar-group toolbar-group-actions">
               {isViewerScreen ? (
                 <button
@@ -935,6 +965,7 @@ export default function App() {
                 />
 
                 <SectionsPanel
+                  language={cv.language}
                   sections={cv.sections || []}
                   sectionCount={sectionCount}
                   activeInspectorTarget={activeInspectorTarget}

@@ -1,4 +1,5 @@
-import { createBlankCv } from "../src/utils/cvData.js";
+import { createBlankCv, syncActiveCvLocale } from "../src/utils/cvData.js";
+import { getCvLanguageCopy, SUPPORTED_CV_LANGUAGES } from "../src/utils/cvLanguage.js";
 import { normalizeStoredCvTheme, resolveCvTheme } from "../src/utils/cvThemes.js";
 import { parseBulletLines, parseWorkDescription } from "../src/utils/parsers.js";
 import { getSectionKind, normalizeSection } from "../src/utils/sections.js";
@@ -93,7 +94,7 @@ function renderCertificateEntry(item) {
   `;
 }
 
-function renderWorkEntry(item) {
+function renderWorkEntry(item, copy) {
   const parsed = parseWorkDescription(item.description);
   const customers = item.customers || parsed.customers;
   const responsibilities = item.responsibilities || parsed.responsibilities;
@@ -112,11 +113,11 @@ function renderWorkEntry(item) {
         ? `<p class="entry-subtitle">${renderParagraph([item.subtitle, item.tags].filter(Boolean).join(" | "))}</p>`
         : ""}
       <div class="work-detail-grid">
-        ${customers ? `<p class="work-detail-line"><span>Customers</span>${renderParagraph(customers)}</p>` : ""}
+        ${customers ? `<p class="work-detail-line"><span>${escapeHtml(copy.work.customers)}</span>${renderParagraph(customers)}</p>` : ""}
         ${responsibilities
           ? `
             <div class="work-detail-block">
-              <div class="work-detail-label">Responsibilities</div>
+              <div class="work-detail-label">${escapeHtml(copy.work.responsibilities)}</div>
               ${bullets.length > 1 || /^\s*[-*]\s*/.test(String(responsibilities || ""))
                 ? `<ul class="responsibility-list">${bullets.map((bullet) => `<li>${renderParagraph(bullet)}</li>`).join("")}</ul>`
                 : `<div class="responsibility-copy">${renderParagraph(responsibilities)}</div>`}
@@ -154,7 +155,7 @@ function renderProjectEntry(item) {
   `;
 }
 
-function renderSection(section) {
+function renderSection(section, copy) {
   const kind = getSectionKind(section.title, section.type, section.sectionTemplate);
 
   if (kind === "professional-summary") {
@@ -216,7 +217,7 @@ function renderSection(section) {
       <section class="cv-section">
         <h2>${escapeHtml(section.title)}</h2>
         <div class="work-list">
-          ${(section.items || []).map(renderWorkEntry).join("")}
+          ${(section.items || []).map((item) => renderWorkEntry(item, copy)).join("")}
         </div>
       </section>
     `;
@@ -265,7 +266,7 @@ function buildCss(theme) {
   return `
     @page { size: A4; margin: 15mm 16mm 16mm 16mm; }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: Aptos, "Segoe UI", sans-serif; color: ${theme.text}; background: white; }
+    body { margin: 0; font-family: "Noto Sans", "Noto Sans Display", "Segoe UI", Aptos, "Liberation Sans", "DejaVu Sans", Arial, sans-serif; color: ${theme.text}; background: white; }
     .cv-document { background: white; }
     .cv-header { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1rem; padding-bottom: 0.8rem; border-bottom: 2px solid ${theme.line}; }
     .cv-header h1 { margin: 0; font-size: 1.9rem; letter-spacing: 0.02em; }
@@ -326,31 +327,52 @@ function buildCss(theme) {
 
 export function normalizeCvDocument(inputCv) {
   const seed = createBlankCv();
+  const localizedCv = syncActiveCvLocale({
+    ...seed,
+    ...(inputCv && typeof inputCv === "object" ? inputCv : {}),
+  });
+  const localized = Object.fromEntries(
+    SUPPORTED_CV_LANGUAGES.map(({ value }) => [
+      value,
+      {
+        basics: {
+          ...seed.localized[value].basics,
+          ...(localizedCv.localized?.[value]?.basics || {}),
+        },
+        sections: Array.isArray(localizedCv.localized?.[value]?.sections)
+          ? localizedCv.localized[value].sections.map(normalizeSection)
+          : seed.localized[value].sections,
+      },
+    ])
+  );
 
   return {
     ...seed,
-    ...(inputCv && typeof inputCv === "object" ? inputCv : {}),
-    id: inputCv?.id || seed.id,
-    name: inputCv?.name || seed.name,
-    theme: normalizeStoredCvTheme(inputCv?.theme || seed.theme),
+    ...localizedCv,
+    id: localizedCv.id || seed.id,
+    name: localizedCv.name || seed.name,
+    language: localizedCv.language || seed.language,
+    theme: normalizeStoredCvTheme(localizedCv.theme || seed.theme),
     basics: {
       ...seed.basics,
-      ...(inputCv?.basics && typeof inputCv.basics === "object" ? inputCv.basics : {}),
+      ...(localizedCv.basics && typeof localizedCv.basics === "object" ? localizedCv.basics : {}),
     },
-    sections: Array.isArray(inputCv?.sections)
-      ? inputCv.sections.map(normalizeSection)
+    sections: Array.isArray(localizedCv.sections)
+      ? localizedCv.sections.map(normalizeSection)
       : seed.sections,
+    localized,
   };
 }
 
 export function renderCvHtml(inputCv) {
   const cv = normalizeCvDocument(inputCv);
   const theme = resolveCvTheme(cv.theme);
+  const copy = getCvLanguageCopy(cv.language);
   const visibleSections = (cv.sections || []).filter((section) => section.visible !== false);
 
   return `
     <!doctype html>
-    <html>
+    <html lang="${escapeHtml(cv.language || "en")}">
       <head>
         <meta charset="utf-8" />
         <title>${escapeHtml(cv.name)}</title>
@@ -364,18 +386,19 @@ export function renderCvHtml(inputCv) {
               <p class="cv-headline">${escapeHtml(cv.basics.headline || "")}</p>
             </div>
             <ul class="contact-list">
-              ${cv.basics.email ? `<li><span>Email</span> ${escapeHtml(cv.basics.email)}</li>` : ""}
-              ${cv.basics.phone ? `<li><span>Phone</span> ${escapeHtml(cv.basics.phone)}</li>` : ""}
-              ${cv.basics.website ? `<li><span>Website</span> ${renderLink(cv.basics.website)}</li>` : ""}
-              ${cv.basics.linkedin ? `<li><span>LinkedIn</span> ${renderLink(cv.basics.linkedin)}</li>` : ""}
-              ${cv.basics.nationality ? `<li><span>Nationality</span> ${escapeHtml(cv.basics.nationality)}</li>` : ""}
-              ${cv.basics.dateOfBirth ? `<li><span>Date of Birth</span> ${escapeHtml(cv.basics.dateOfBirth)}</li>` : ""}
+              ${cv.basics.email ? `<li><span>${escapeHtml(copy.contact.email)}</span> ${escapeHtml(cv.basics.email)}</li>` : ""}
+              ${cv.basics.phone ? `<li><span>${escapeHtml(copy.contact.phone)}</span> ${escapeHtml(cv.basics.phone)}</li>` : ""}
+              ${cv.basics.website ? `<li><span>${escapeHtml(copy.contact.website)}</span> ${renderLink(cv.basics.website)}</li>` : ""}
+              ${cv.basics.linkedin ? `<li><span>${escapeHtml(copy.contact.linkedin)}</span> ${renderLink(cv.basics.linkedin)}</li>` : ""}
+              ${cv.basics.gender ? `<li><span>${escapeHtml(copy.contact.gender)}</span> ${escapeHtml(cv.basics.gender)}</li>` : ""}
+              ${cv.basics.nationality ? `<li><span>${escapeHtml(copy.contact.nationality)}</span> ${escapeHtml(cv.basics.nationality)}</li>` : ""}
+              ${cv.basics.dateOfBirth ? `<li><span>${escapeHtml(copy.contact.dateOfBirth)}</span> ${escapeHtml(cv.basics.dateOfBirth)}</li>` : ""}
             </ul>
           </header>
           ${cv.basics.summary
-            ? `<section class="cv-section"><h2>Objective</h2><p>${renderParagraph(cv.basics.summary)}</p></section>`
+            ? `<section class="cv-section"><h2>${escapeHtml(copy.objective)}</h2><p>${renderParagraph(cv.basics.summary)}</p></section>`
             : ""}
-          ${visibleSections.map(renderSection).join("")}
+          ${visibleSections.map((section) => renderSection(section, copy)).join("")}
         </article>
       </body>
     </html>

@@ -1,5 +1,5 @@
 import React from "react";
-import { SECTION_TEMPLATES } from "../../constants/index.js";
+import { getSectionTemplates } from "../../constants/index.js";
 import {
   getSectionKind,
   buildSectionFromTemplate,
@@ -16,6 +16,7 @@ import { SectionTemplatePicker } from "./SectionTemplatePicker.jsx";
 
 export function SectionCard({
   section,
+  language,
   sectionIndex,
   sectionCount,
   activeInspectorTarget,
@@ -33,6 +34,7 @@ export function SectionCard({
   setInsertMenuIndex,
   insertSectionAt,
 }) {
+  const sectionTemplates = getSectionTemplates(language);
   const isInspectorTarget = activeInspectorTarget === `section:${section.id}`;
   const isHidden = section.visible === false;
   const isCollapsed = collapsedSections[section.id];
@@ -134,12 +136,12 @@ export function SectionCard({
                   value={section.sectionTemplate || getSectionKind(section.title, section.type)}
                   onChange={(event) =>
                     updateSection(section.id, (current) => {
-                      const template = buildSectionFromTemplate(event.target.value);
+                      const template = buildSectionFromTemplate(event.target.value, language);
                       return normalizeForType(
                         {
-                          ...template,
-                          id: current.id,
-                          title: current.title || template.title,
+                      ...template,
+                      id: current.id,
+                      title: current.title || template.title,
                           visible: current.visible,
                           items:
                             current.sectionTemplate === event.target.value
@@ -155,7 +157,7 @@ export function SectionCard({
                     })
                   }
                 >
-                  {SECTION_TEMPLATES.map((template) => (
+                  {sectionTemplates.map((template) => (
                     <option key={template.key} value={template.key}>
                       {template.label}
                     </option>
@@ -248,6 +250,7 @@ export function SectionCard({
       />
       {insertMenuIndex === sectionIndex + 1 ? (
         <SectionTemplatePicker
+          language={language}
           onSelect={(templateKey) => insertSectionAt(sectionIndex + 1, templateKey)}
         />
       ) : null}
